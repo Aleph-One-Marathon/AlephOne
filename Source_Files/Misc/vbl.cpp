@@ -106,8 +106,8 @@ Feb 20, 2002 (Woody Zenfell):
 #define MAXIMUM_TIME_DIFFERENCE     15 // allowed between heartbeat_count and dynamic_world->tick_count
 #define MAXIMUM_NET_QUEUE_SIZE       8
 #define DISK_CACHE_SIZE             ((sizeof(int16)+sizeof(uint32))*100)
-#define MAXIMUM_REPLAY_SPEED         5
-#define MINIMUM_REPLAY_SPEED        -5
+#define MAXIMUM_REPLAY_SPEED         10 // 10x
+#define MINIMUM_REPLAY_SPEED        -10 // -10 = pause, -9 = 1/10x
 
 /* ---------- macros */
 
@@ -246,17 +246,37 @@ void increment_replay_speed(
 	void)
 {
 	if (replay.replay_speed < MAXIMUM_REPLAY_SPEED) replay.replay_speed++;
+	if (replay.replay_speed == 0) replay.replay_speed++; // skip past 0
 }
 
 void decrement_replay_speed(
 	void)
 {
 	if (replay.replay_speed > MINIMUM_REPLAY_SPEED) replay.replay_speed--;
+	if (replay.replay_speed == 0) replay.replay_speed--; // skip past 0
 }
 
 int get_replay_speed()
 {
 	return replay.replay_speed;
+}
+
+char* get_replay_speed_string()
+{
+	char* speed= new char[sizeof("1/10x")];
+	if (replay.replay_speed == MINIMUM_REPLAY_SPEED)
+	{
+		strcpy(speed, "pause");
+	}
+	else if (replay.replay_speed < 0)
+	{
+		sprintf(speed, "1/%ix", -replay.replay_speed + 1);
+	}
+	else
+	{
+		sprintf(speed, "%ix", replay.replay_speed);
+	}
+	return speed;
 }
 
 bool game_is_being_replayed()
@@ -300,7 +320,7 @@ bool input_controller(
 					{
 						short flag_count= MAX(replay.replay_speed, 1);
 					
-						if (!pull_flags_from_recording(flag_count)) // oops. silly me.
+						if (!pull_flags_from_recording(flag_count)) // pull replay_speed flags from recording -- so speed 2 is 2x, etc.
 						{
 							if (replay.have_read_last_chunk)
 							{
@@ -309,13 +329,13 @@ bool input_controller(
 							}
 						}
 						else
-						{	
+						{
 							/* Increment the heartbeat.. */
 							heartbeat_count+= flag_count;
 						}
 	
-						/* Reset the phase-> doesn't matter if the replay speed is positive */					
-						/* +1 so that replay_speed 0 is different from replay_speed 1 */
+						/* Reset the phase-> doesn't matter if the replay speed is positive */
+						// setting phase to 1 will not slow playback, so we add 1 so speed -1 takes 2 calls to advance (1/2x), etc.
 						phase= -(replay.replay_speed) + 1;
 					}
 				}
