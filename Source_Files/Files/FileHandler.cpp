@@ -850,6 +850,21 @@ void FileSpecifier::SplitPath(string &base, string &part) const
 	}
 }
 
+void FileSpecifier::SetExtension(const string& ext)
+{
+	string::size_type pos = name.rfind('.');
+	if (pos != string::npos && pos != 0) {
+		name = name.substr(0, pos);
+	}
+	if (ext[0] == '.') {
+		// caller provided '.'
+		name += ext;
+	} else {
+		// caller didn't provide '.'
+		name += ('.' + ext);
+	}
+}
+
 // Fill file specifier with base name
 void FileSpecifier::ToDirectory(DirectorySpecifier &dir)
 {
@@ -1463,6 +1478,9 @@ public:
 			break;
 		case _typecode_film:
 			m_extension = ".filA";
+			break;
+		case _typecode_movie:
+			m_extension = ".webm";
 			break;
 		default:
 			break;

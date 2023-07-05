@@ -303,6 +303,9 @@ public:
 	// Rename file
 	bool Rename(const FileSpecifier& Destination);
 
+	// Set the file extension to ext
+	void SetExtension(const string& ext);
+
 	// Copy file specification
 	const FileSpecifier &operator=(const FileSpecifier &other);
 
@@ -310,6 +313,7 @@ public:
 	static std::string HideExtension(const std::string& filename);
 	
 	const char *GetPath(void) const {return name.c_str();}
+	const std::string& GetPathStr(void) const {return name;}
 
 	FileSpecifier();
 	FileSpecifier(const string &s) : name(s), err(0) {canonicalize_path();}

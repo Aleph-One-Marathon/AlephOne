@@ -20,12 +20,14 @@ struct ShellOptions {
 	bool force_windowed;
 
 	bool skip_intro;
+	bool export_film;
 	bool editor;
 
 	std::string directory;
 	std::vector<std::string> files;
 
 	std::string output;
+	std::string view_player;
 };
 
 extern ShellOptions shell_options;

@@ -543,13 +543,10 @@ void get_recording_header_data(
 extern int movie_export_phase;
 
 bool setup_for_replay_from_file(
-	FileSpecifier& File,
-	uint32 map_checksum,
-	bool prompt_to_export)
+	const FileSpecifier& File,
+	const std::string& export_path)
 {
 	bool successful= false;
-
-	(void)(map_checksum);
 	
 	FilmFileSpec = File;
 	if (FilmFileSpec.Open(FilmFile))
@@ -579,8 +576,13 @@ bool setup_for_replay_from_file(
 #ifdef DEBUG_REPLAY
 			open_stream_file();
 #endif
-			if (prompt_to_export)
-				Movie::instance()->PromptForRecording();
+
+			if (!export_path.empty())
+			{
+				Movie::instance()->StartRecording(export_path);
+				// TODO: make StartRecording indicate if it succeeded, and return false if not.
+			}
+
 			successful= true;
 		} else {
 			/* Tell them that this map wasn't found.  They lose. */

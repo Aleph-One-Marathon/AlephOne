@@ -59,7 +59,6 @@ struct libav_vars {
     bool inited;
 };
 
-void Movie::PromptForRecording() {}
 void Movie::StartRecording(std::string path) {}
 bool Movie::IsRecording() { return false; }
 void Movie::StopRecording() {}
@@ -169,14 +168,6 @@ Movie::Movie() :
 {
     av = new libav_vars_t;
     memset(av, 0, sizeof(libav_vars_t));
-}
-
-void Movie::PromptForRecording()
-{
-	FileSpecifier dst_file;
-	if (!dst_file.WriteDialog(_typecode_movie, "EXPORT FILM", "Untitled Movie.webm"))
-		return;
-	StartRecording(dst_file.GetPath());
 }
 
 void Movie::StartRecording(std::string path)

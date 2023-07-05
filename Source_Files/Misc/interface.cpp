@@ -2050,13 +2050,24 @@ static bool begin_game(
 								set_game_error(systemError, ENOENT);
 								display_loading_map_error();
 								success= false;
+								break;
+							}
+
+							if (prompt_to_export)
+							{
+								FileSpecifier dst_file;
+								success = dst_file.WriteDialog(_typecode_movie, "EXPORT FILM", "Untitled Movie.webm");
+								if (!success)
+									break;
+
+								success = setup_for_replay_from_file(ReplayFile, dst_file.GetPathStr());
 							}
 							else
 							{
-								success= setup_for_replay_from_file(ReplayFile, get_current_map_checksum(), prompt_to_export);
-
-								hide_cursor();
+								success = setup_for_replay_from_file(ReplayFile);
 							}
+
+							hide_cursor();
 						}
 					} 
 					break;
@@ -2069,8 +2080,32 @@ static bool begin_game(
 					break;
 
 				case _replay_from_file:
-					success= setup_for_replay_from_file(DraggedReplayFile, get_current_map_checksum());
-					user= _replay;
+					{
+						bool export_from_shell = false;
+#ifndef MAC_APP_STORE
+						export_from_shell = shell_options.export_film;
+#endif
+						if (export_from_shell)
+						{
+							FileSpecifier moviePath;
+							if (shell_options.output.empty())
+							{
+								moviePath = DraggedReplayFile;
+								moviePath.SetExtension(".webm");
+							}
+							else
+							{
+								moviePath = FileSpecifier(shell_options.output);
+							}
+							success = setup_for_replay_from_file(DraggedReplayFile, moviePath.GetPathStr());
+						}
+						else
+						{
+							success = setup_for_replay_from_file(DraggedReplayFile);
+						}
+
+						user = _replay;
+					}
 					break;
 					
 				default:
@@ -2215,6 +2250,14 @@ static bool begin_game(
 		success= new_game(number_of_players, is_networked, &game_information, starts, &entry);
 		if(success)
 		{
+			if (user == _replay && !shell_options.view_player.empty()) {
+				try {
+					short player = std::stoi(shell_options.view_player);
+					if (player > 0 && player <= number_of_players)
+						set_current_player_index(player-1);
+				}
+				catch (...) {}
+			}
 			start_game(user, false);
 		} else {
 			clean_up_after_failed_game(user == _network_player, record_game, clean_up_on_failure);
@@ -2340,7 +2383,12 @@ static void finish_game(
 	}
 	Movie::instance()->StopRecording();
 
-	if (shell_options.editor && shell_options.output.size())
+	if (shell_options.export_film)
+	{
+		exit(0);
+	}
+
+	if (shell_options.editor && !shell_options.output.empty())
 	{
 		L_Call_Cleanup();
 		FileSpecifier file(shell_options.output);
