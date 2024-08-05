@@ -1143,14 +1143,14 @@ static bool setEnvironmentVars(PipeType pipeChildRead, PipeType pipeChildWrite)
     return true;
 } // setEnvironmentVars
 
-static bool initSteamworks(PipeType fd)
+static bool initSteamworks(PipeType fd, ESteamAPIInitResult* resultCode, SteamErrMsg* errorMessage)
 {
     // this can fail for many reasons:
     //  - you forgot a steam_appid.txt in the current working directory.
     //  - you don't have Steam running
     //  - you don't own the game listed in steam_appid.txt
-    if (!SteamAPI_Init())
-        return 0;
+    *resultCode = SteamAPI_InitEx(errorMessage);
+    if (*resultCode != k_ESteamAPIInitResult_OK) return 0;
 
     GSteamStats = SteamUserStats();
     GSteamUtils = SteamUtils();
@@ -1184,11 +1184,17 @@ static int mainline(void)
     ProcessType childPid;
 
     dbgpipe("Parent starting mainline.\n");
+    ESteamAPIInitResult initResultCode;
+    SteamErrMsg initErrorMessage;
 
     if (!createPipes(&pipeParentRead, &pipeParentWrite, &pipeChildRead, &pipeChildWrite))
         fail("Failed to create application pipes");
-    else if (!initSteamworks(pipeParentWrite))
-        fail("Failed to initialize Steamworks");
+    else if (!initSteamworks(pipeParentWrite, &initResultCode, &initErrorMessage))
+    {
+        char str[1200];
+        sprintf(str, "Failed to initialize Steamworks: (%s)", initErrorMessage);
+        fail(str);
+    }
     else if (!setEnvironmentVars(pipeChildRead, pipeChildWrite))
         fail("Failed to set environment variables");
     else if (!launchChild(&childPid)){
