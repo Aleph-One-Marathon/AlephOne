@@ -1731,10 +1731,9 @@ static item_upload_data steam_workshop_prepare_upload(steam_workshop_uploader_ui
 
 	if (!data.is_scenarios_compatible)
 	{
-		const auto scenario_variable = "$scenarioName$";
-		const auto scenario_name = expand_app_variables(scenario_variable);
+		const auto scenario_name = Scenario::instance()->GetName();
 
-		if (scenario_variable == scenario_name)
+		if (scenario_name.empty())
 		{
 			throw std::runtime_error("The scenario for this item couldn't be deduced");
 		}
@@ -1873,7 +1872,7 @@ static void display_steam_workshop_uploader_dialog(void* arg)
 {
 	force_system_colors();
 
-	std::string scenario_name = expand_app_variables("$scenarioName$");
+	const auto scenario_name = Scenario::instance()->GetName();
 
 	auto item_list = steam_get_owned_items(scenario_name);
 	std::vector<std::string> item_labels;
