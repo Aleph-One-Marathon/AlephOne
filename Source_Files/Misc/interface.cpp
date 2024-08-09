@@ -271,6 +271,7 @@ struct steam_workshop_uploader_ui_data {
 	uint64_t item_id;
 	int item_type;
 	FileSpecifier directory_path;
+	FileSpecifier thumbnail_path;
 	bool is_scenarios_compatible;
 };
 
@@ -1744,6 +1745,7 @@ static item_upload_data steam_workshop_prepare_upload(steam_workshop_uploader_ui
 	workshop_item.id = data.item_id;
 	workshop_item.type = (ItemType)data.item_type;
 	workshop_item.directory_path = data.directory_path.GetPath();
+	workshop_item.thumbnail_path = data.thumbnail_path.GetPath();
 	return workshop_item;
 }
 
@@ -1805,7 +1807,7 @@ static void steam_workshop_upload_item_callback(void* arg)
 	auto item = params->first;
 	auto dialog = params->second;
 
-	if (!item->directory_path.IsDir() || !item->directory_path.Exists())
+	if (!item->item_id && (!item->directory_path.IsDir() || !item->directory_path.Exists()))
 	{
 		alert_user("The item directory is not valid.");
 		return;
@@ -1936,6 +1938,12 @@ static void display_steam_workshop_uploader_dialog(void* arg)
 	table->dual_add_row(new w_static_text("Uncheck if the item is only compatible with this scenario"), d);
 	table->add_row(new w_spacer(), true);
 
+	auto thumbnail_path = new w_file_chooser("Choose Preview Image", _typecode_unknown);
+	table->dual_add(thumbnail_path->label("Preview Image"), d);
+	table->dual_add(thumbnail_path, d);
+
+	table->add_row(new w_spacer(), true);
+
 	auto directory_path = new w_directory_chooser();
 	table->dual_add(directory_path->label("Item Directory"), d);
 	table->dual_add(directory_path, d);
@@ -1962,12 +1970,14 @@ static void display_steam_workshop_uploader_dialog(void* arg)
 		ui_data.item_id = item.id;
 		ui_data.item_type = item.type;
 		ui_data.directory_path = "";
+		ui_data.thumbnail_path = "";
 		ui_data.is_scenarios_compatible = item.is_scenarios_compatible;
 
 		types_popup->set_selection(ui_data.item_type);
 		types_popup->set_enabled(!ui_data.item_id);
 
 		directory_path->set_directory(ui_data.directory_path);
+		thumbnail_path->set_file(ui_data.thumbnail_path);
 
 		custom_scenarios->set_selection(ui_data.is_scenarios_compatible);
 		custom_scenarios->set_enabled(ui_data.item_type != ItemType::Scenario);
@@ -1991,6 +2001,11 @@ static void display_steam_workshop_uploader_dialog(void* arg)
 	directory_path->set_callback([&]()
 	{
 		ui_data.directory_path = directory_path->get_directory().GetPath();
+	});
+
+	thumbnail_path->set_callback([&]()
+	{
+		ui_data.thumbnail_path = thumbnail_path->get_file().GetPath();
 	});
 
 	clear_screen();

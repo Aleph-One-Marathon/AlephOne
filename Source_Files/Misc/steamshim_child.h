@@ -15,6 +15,7 @@ struct item_upload_data {
     uint64_t id;
     ItemType type;
     std::string directory_path;
+    std::string thumbnail_path;
     std::string required_scenario;
     std::vector<std::string> tags;
 
@@ -25,6 +26,7 @@ struct item_upload_data {
         data_stream.write(reinterpret_cast<const char*>(&type), sizeof(type));
 
         data_stream << directory_path << '\0';
+        data_stream << thumbnail_path << '\0';
         data_stream << required_scenario << '\0';
 
         for (const auto& tag : tags)

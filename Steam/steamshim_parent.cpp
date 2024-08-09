@@ -375,6 +375,7 @@ struct item_upload_data {
     uint64_t id;
     ItemType type;
     std::string directory_path;
+    std::string thumbnail_path;
     std::string required_scenario;
     std::vector<std::string> tags;
 
@@ -384,6 +385,7 @@ struct item_upload_data {
         iss.read(reinterpret_cast<char*>(&id), sizeof(id));
         iss.read(reinterpret_cast<char*>(&type), sizeof(type));
         std::getline(iss, directory_path, '\0');
+        std::getline(iss, thumbnail_path, '\0');
         std::getline(iss, required_scenario, '\0');
 
         while (true)
@@ -636,7 +638,6 @@ static inline bool writeGetStatF(PipeType fd, const char *name, const float val,
 static void UpdateItem(PublishedFileId_t item_id, item_upload_data& item_data)
 {
     UGCUpdateHandle_t updateHandle = GSteamUGC->StartItemUpdate(GAppID, item_id);
-    GSteamUGC->SetItemContent(updateHandle, item_data.directory_path.c_str());
 
     if (item_data.id) //existing item
         GSteamUGC->RemoveItemKeyValueTags(updateHandle, SteamItemTags::RequiredScenario);
@@ -647,6 +648,16 @@ static void UpdateItem(PublishedFileId_t item_id, item_upload_data& item_data)
         GSteamUGC->SetItemTitle(updateHandle, title.c_str());
         GSteamUGC->AddItemKeyValueTag(updateHandle, SteamItemTags::ItemType, type.c_str());
         GSteamUGC->SetItemVisibility(updateHandle, k_ERemoteStoragePublishedFileVisibilityPrivate);
+    }
+
+    if (!item_data.directory_path.empty())
+    {
+        GSteamUGC->SetItemContent(updateHandle, item_data.directory_path.c_str());
+    }
+
+    if (!item_data.thumbnail_path.empty())
+    {
+        GSteamUGC->SetItemPreview(updateHandle, item_data.thumbnail_path.c_str());
     }
 
     if (!item_data.required_scenario.empty())
