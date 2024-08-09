@@ -1834,7 +1834,6 @@ static void steam_workshop_upload_item_callback(void* arg)
 		{
 			alert_user("Your item was correctly uploaded on Steam", infoNoError);
 			dialog->quit(0);
-			display_steam_workshop_uploader_dialog(nullptr);
 		}
 		else
 		{
