@@ -1928,7 +1928,7 @@ static void display_steam_workshop_uploader_dialog(void* arg)
 	table->dual_add(types_popup, d);
 
 	char label_off[128];
-	const char* labels[] = { label_off, "Any Scenario", nullptr };
+	const char* labels[] = { label_off, "Any Scenario", "", nullptr };
 	snprintf(label_off, 128, "%s Only", Scenario::instance()->GetName().c_str());
 	
 	auto custom_scenarios = new w_toggle(true, labels);
@@ -1985,7 +1985,7 @@ static void display_steam_workshop_uploader_dialog(void* arg)
 		ui_data.item_type = types_popup->get_selection();
 		bool is_scenario = static_cast<ItemType>(ui_data.item_type) == ItemType::Scenario;
 		custom_scenarios->set_enabled(!is_scenario);
-		custom_scenarios->set_selection(!is_scenario);
+		custom_scenarios->set_selection(is_scenario ? 2 : 1);
 
 	}, nullptr);
 
