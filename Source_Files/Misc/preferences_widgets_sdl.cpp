@@ -55,20 +55,17 @@ extern std::vector<item_subscribed_query_result::item> subscribed_workshop_items
 
 static void add_workshop_items(Typecode type, std::vector<env_item>& items)
 {
-	printf("adding workshop items\n");
 	std::vector<FileSpecifier> files;
 	FindAllFiles finder(files);
 
 	for (auto& item : subscribed_workshop_items)
 	{
-		printf("checking %s\n", item.install_folder_path.c_str());
 		FileSpecifier dir = item.install_folder_path;
 		finder.Find(dir, type);
 	}
 
 	if (files.size() == 0)
 	{
-		printf("files.size() == 0\n");
 		return;
 	}
 
