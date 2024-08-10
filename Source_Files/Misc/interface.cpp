@@ -1899,7 +1899,7 @@ static void display_steam_workshop_uploader_dialog(void* arg)
 	}
 
 	steam_workshop_uploader_ui_data ui_data;
-	ui_data.item_type = new_item.type;
+	ui_data.item_type = static_cast<int>(new_item.type);
 	ui_data.is_scenarios_compatible = new_item.is_scenarios_compatible;
 	ui_data.item_id = new_item.id;
 
@@ -1924,7 +1924,7 @@ static void display_steam_workshop_uploader_dialog(void* arg)
 	static const std::vector<std::string> item_types = { "Scenario", "Plugin", "Other"};
 	auto types_popup = new w_select_popup();
 	types_popup->set_labels(item_types);
-	types_popup->set_selection(new_item.type);
+	types_popup->set_selection(static_cast<int>(new_item.type));
 
 	table->dual_add(types_popup->label("Item Type"), d);
 	table->dual_add(types_popup, d);
@@ -1967,7 +1967,7 @@ static void display_steam_workshop_uploader_dialog(void* arg)
 		auto& item = item_list.items.at(item_index);
 
 		ui_data.item_id = item.id;
-		ui_data.item_type = item.type;
+		ui_data.item_type = static_cast<int>(item.type);
 		ui_data.directory_path = "";
 		ui_data.thumbnail_path = "";
 		ui_data.is_scenarios_compatible = item.is_scenarios_compatible;
@@ -1979,14 +1979,14 @@ static void display_steam_workshop_uploader_dialog(void* arg)
 		thumbnail_path->set_file(ui_data.thumbnail_path);
 
 		custom_scenarios->set_selection(ui_data.is_scenarios_compatible);
-		custom_scenarios->set_enabled(ui_data.item_type != ItemType::Scenario);
+		custom_scenarios->set_enabled(static_cast<ItemType>(ui_data.item_type) != ItemType::Scenario);
 
 	}, nullptr);
 
 	types_popup->set_popup_callback([&](void*)
 	{
 		ui_data.item_type = types_popup->get_selection();
-		bool is_scenario = ui_data.item_type == ItemType::Scenario;
+		bool is_scenario = static_cast<ItemType>(ui_data.item_type) == ItemType::Scenario;
 		custom_scenarios->set_enabled(!is_scenario);
 		custom_scenarios->set_selection(!is_scenario);
 

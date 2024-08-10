@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-enum ItemType {
+enum class ItemType {
     Scenario,
     Plugin,
     Other
