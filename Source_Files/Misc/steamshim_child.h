@@ -15,7 +15,6 @@ enum class ItemType {
 };
 
 enum class ContentType {
-    //Scenario
     START_SCENARIO = 0,
     None = 0,
 
@@ -26,7 +25,6 @@ enum class ContentType {
     Script,
     Theme,
 
-    //Other
     START_OTHER = 64,
     SoloAndNet = 64,
     Solo,
