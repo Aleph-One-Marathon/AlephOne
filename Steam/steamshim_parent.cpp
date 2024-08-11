@@ -306,9 +306,10 @@ enum class ItemType {
 
 enum class ContentType {
     //Scenario
+    START_SCENARIO = 0,
     None = 0,
 
-    //Plugin
+    START_PLUGIN = 16,
     Graphics = 16,
     HUD,
     Music,
@@ -316,9 +317,10 @@ enum class ContentType {
     Theme,
 
     //Other
-    Solo = 64,
-    Net = 128,
-    SoloAndNet = 192
+    START_OTHER = 64,
+    SoloAndNet = 64,
+    Solo,
+    Net
 };
 
 struct item_subscribed_query_result
