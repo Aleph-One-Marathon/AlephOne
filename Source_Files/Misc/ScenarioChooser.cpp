@@ -23,17 +23,14 @@
 using SurfacePtr = std::unique_ptr<SDL_Surface, decltype(&SDL_FreeSurface)>;
 using WindowPtr = std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)>;
 
-class Scenario
+class ScenarioChooserScenario
 {
 public:
-	bool operator<(const Scenario& other) const;
+	bool operator<(const ScenarioChooserScenario& other) const;
 	
 	std::string path;
 	
-	std::string name; // unused
-	std::string image_path;
-	std::string release; // unused
-	
+	std::string name;
 	std::shared_ptr<SDL_Surface> image;
 
 	bool load(const std::string& path);
@@ -43,7 +40,7 @@ public:
 class TitleScreenFinder : public FileFinder
 {
 public:
-	TitleScreenFinder(Scenario& scenario) : FileFinder(), scenario_{scenario} { }
+	TitleScreenFinder(ScenarioChooserScenario& scenario) : FileFinder(), scenario_{scenario} { }
 	virtual bool found(FileSpecifier& file)
 	{
 		if (boost::algorithm::ends_with(file.GetPath(), ".imgA"))
@@ -69,10 +66,10 @@ public:
 	}
 	
 private:
-	Scenario& scenario_;
+	ScenarioChooserScenario& scenario_;
 };
 
-bool Scenario::operator<(const Scenario& other) const
+bool ScenarioChooserScenario::operator<(const ScenarioChooserScenario& other) const
 {
 	return std::lexicographical_compare(name.begin(),
 										name.end(),
@@ -83,11 +80,12 @@ bool Scenario::operator<(const Scenario& other) const
 										});
 }
 
-bool Scenario::load(const std::string& path)
+bool ScenarioChooserScenario::load(const std::string& path)
 {
 	DirectorySpecifier directory(path);
+	DirectorySpecifier scripts = directory + "Scripts";
 
-	if (!(directory + "Scripts").Exists())
+	if (!scripts.Exists())
 	{
 		return false;
 	}
@@ -98,34 +96,56 @@ bool Scenario::load(const std::string& path)
 	directory.SplitPath(base, part);
 
 	this->path = path;
+	name = part;
 
-	FileSpecifier config = directory + "Scripts" + "chooser.xml";
-	if (config.Exists())
+	std::vector<dir_entry> entries;
+	if (scripts.ReadDirectory(entries))
 	{
-		boost::property_tree::ptree tree;
-		boost::property_tree::read_xml(config.GetPath(), tree);
+		std::sort(entries.begin(), entries.end());
+		for (auto it = entries.rbegin(); it != entries.rend(); ++it)
+		{
+			if (it->is_directory ||
+				it->name[it->name.length() - 1] == '~' ||
+				boost::algorithm::ends_with(it->name, ".lua"))
+			{
+				continue;
+			}
 
-		image_path = tree.get<std::string>("chooser.image", "");
-		name = tree.get<std::string>("chooser.name", part);
-		release = tree.get<std::string>("chooser.release", "1994-12-21");
+			FileSpecifier mml = scripts + it->name;
+			boost::property_tree::ptree tree;
+			boost::property_tree::read_xml(mml.GetPath(), tree);
 
-		FileSpecifier image_file = directory + image_path;
+			try
+			{
+				name = tree.get<std::string>("marathon.scenario.<xmlattr>.name");
+				break;
+			}
+			catch (const boost::property_tree::ptree_error&)
+			{
+
+			}
+		}
+	}
+
+#ifdef HAVE_SDL_IMAGE
+	FileSpecifier image_file = directory + "chooser.png";
+	OpenedFile of;
+	if (image_file.Open(of))
+	{
+		image.reset(IMG_Load_RW(of.GetRWops(), 0));
+	}
+#endif
+
+	if (!image)
+	{
+		FileSpecifier image_file = directory + "chooser.bmp";
 		OpenedFile of;
 		if (image_file.Open(of))
 		{
-#ifdef HAVE_SDL_IMAGE
-			image.reset(IMG_Load_RW(of.GetRWops(), 0));
-#else
 			image.reset(SDL_LoadBMP_RW(of.GetRWops(), 0));
-#endif
 		}
 	}
-	else
-	{
-		name = part;
-		release = "1994-12-21";
-	}
-	
+
 	if (!image)
 	{
 		find_image();
@@ -134,7 +154,7 @@ bool Scenario::load(const std::string& path)
 	return image.get();
 }
 
-void Scenario::find_image()
+void ScenarioChooserScenario::find_image()
 {
 	TitleScreenFinder finder(*this);
 	FileSpecifier f(path);
@@ -154,7 +174,7 @@ ScenarioChooser::~ScenarioChooser()
 
 void ScenarioChooser::add_scenario(const std::string& path)
 {
-	Scenario scenario;
+	ScenarioChooserScenario scenario;
 	if (scenario.load(path))
 	{
 		scenarios_.push_back(scenario);
@@ -177,6 +197,11 @@ void ScenarioChooser::add_directory(const std::string& path)
 			}
 		}
 	}
+}
+
+int ScenarioChooser::num_scenarios() const
+{
+	return static_cast<int>(scenarios_.size());
 }
 
 std::string ScenarioChooser::run()
@@ -456,7 +481,7 @@ void ScenarioChooser::move_selection(int col_delta, int row_delta)
 	}
 }
 
-void ScenarioChooser::optimize_image(Scenario& scenario, SDL_Window* window)
+void ScenarioChooser::optimize_image(ScenarioChooserScenario& scenario, SDL_Window* window)
 {
 	auto format = SDL_GetWindowSurface(window)->format;
 	SurfacePtr optimized(SDL_ConvertSurface(scenario.image.get(), format, 0), SDL_FreeSurface);
