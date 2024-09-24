@@ -166,6 +166,13 @@ std::shared_ptr<MusicPlayer> OpenALManager::PlayMusic(std::shared_ptr<StreamDeco
 	return musicPlayer;
 }
 
+std::shared_ptr<DynamicMusicPlayer> OpenALManager::PlayDynamicMusic(std::vector<DynamicMusicPlayer::Preset>& presets, int starting_preset_index, int starting_segment_index, MusicParameters parameters) {
+	if (!process_audio_active) return std::shared_ptr<DynamicMusicPlayer>();
+	auto musicPlayer = std::make_shared<DynamicMusicPlayer>(presets, starting_preset_index, starting_segment_index, parameters);
+	audio_players_shared.push(musicPlayer);
+	return musicPlayer;
+}
+
 //Used for video playback
 std::shared_ptr<StreamPlayer> OpenALManager::PlayStream(CallBackStreamPlayer callback, int length, int rate, bool stereo, AudioFormat audioFormat) {
 	if (!process_audio_active) return std::shared_ptr<StreamPlayer>();

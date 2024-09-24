@@ -29,9 +29,11 @@ Music::Music() :
 	random_order(false),
 	music_slots(reserved_music_slots)
 {
+	music_slots[MusicSlot::Intro] = std::make_unique<StandardSlot>();
+	music_slots[MusicSlot::Level] = std::make_unique<StandardSlot>();
 }
 
-bool Music::Slot::Open(FileSpecifier *file)
+bool Music::StandardSlot::Open(FileSpecifier *file)
 {
 	if (decoder)
 	{
@@ -55,16 +57,16 @@ bool Music::Slot::Open(FileSpecifier *file)
 void Music::RestartIntroMusic()
 {
 	auto& introSlot = music_slots[MusicSlot::Intro];
-	if (introSlot.IsInit() && !introSlot.Playing() && introSlot.SetParameters(true, 1)) introSlot.Play();
+	if (introSlot->IsInit() && !introSlot->Playing() && introSlot->SetParameters(true, 1)) introSlot->Play();
 }
 
 void Music::Pause(int index)
 {
-	if (index != NONE) music_slots[index].Pause();
+	if (index != NONE) music_slots[index]->Pause();
 	else
 	{
 		for (auto& slot : music_slots) {
-			slot.Pause();
+			slot->Pause();
 		}
 
 		music_slots.resize(reserved_music_slots);
@@ -73,11 +75,11 @@ void Music::Pause(int index)
 
 void Music::Fade(float limitVolume, short duration, bool stopOnNoVolume, int index)
 {
-	if (index != NONE) music_slots[index].Fade(limitVolume, duration, stopOnNoVolume);
+	if (index != NONE) music_slots[index]->Fade(limitVolume, duration, stopOnNoVolume);
 	else
 	{
 		for (auto& slot : music_slots) {
-			slot.Fade(limitVolume, duration, stopOnNoVolume);
+			slot->Fade(limitVolume, duration, stopOnNoVolume);
 		}
 	}
 }
@@ -99,19 +101,35 @@ void Music::Slot::Fade(float limitVolume, short duration, bool stopOnNoVolume)
 
 int Music::Load(FileSpecifier& file, bool loop, float volume)
 {
-	music_slots.resize(music_slots.size() + 1);
-	int index = music_slots.size() - 1;
-	auto& slot = music_slots[index];
-	return slot.Open(&file) && slot.SetParameters(loop, volume) ? index : NONE;
+	auto slot = std::make_unique<StandardSlot>();
+	bool success = slot->Open(&file) && slot->SetParameters(loop, volume);
+	if (!success) return NONE;
+	music_slots.push_back(std::move(slot));
+	return music_slots.size() - 1;
+}
+
+int Music::Load(float volume)
+{
+	auto slot = std::make_unique<DynamicSlot>();
+	bool success = slot->SetParameters(true, volume);
+	if (!success) return NONE;
+	music_slots.push_back(std::move(slot));
+	return music_slots.size() - 1;
+}
+
+bool Music::SetupIntroMusic(FileSpecifier& file)
+{
+	auto& slot = music_slots[MusicSlot::Intro];
+	return slot && dynamic_cast<StandardSlot*>(slot.get())->Open(&file);
 }
 
 bool Music::Playing(int index)
 {
-	if (index != NONE) return music_slots[index].Playing();
+	if (index != NONE) return music_slots[index]->Playing();
 	else 
 	{
 		for (auto& slot : music_slots) {
-			if (slot.Playing()) return true;
+			if (slot->Playing()) return true;
 		}
 
 		return false;
@@ -122,20 +140,20 @@ void Music::Idle()
 {
 	if (!SoundManager::instance()->IsInitialized() || !SoundManager::instance()->IsActive() || OpenALManager::Get()->IsPaused()) return;
 
-	if (get_game_state() == _game_in_progress && !music_slots[MusicSlot::Level].Playing() && LoadLevelMusic()) {
-		music_slots[MusicSlot::Level].Play();
+	if (get_game_state() == _game_in_progress && !music_slots[MusicSlot::Level]->Playing() && LoadLevelMusic()) {
+		music_slots[MusicSlot::Level]->Play();
 	}
 
 	for (int i = 0; i < music_slots.size(); i++) {
 
 		auto& slot = music_slots.at(i);
-		if (slot.IsInit() && slot.IsFading()) {
-			auto volumeResult = slot.ComputeFadingVolume();
+		if (slot->IsInit() && slot->IsFading()) {
+			auto volumeResult = slot->ComputeFadingVolume();
 			bool fadeIn = volumeResult.first;
-			float vol = fadeIn ? std::min(volumeResult.second, slot.GetLimitFadeVolume()) : std::max(volumeResult.second, slot.GetLimitFadeVolume());
-			slot.SetVolume(vol);
-			if (vol == slot.GetLimitFadeVolume()) slot.StopFade();
-			if (vol <= 0 && slot.StopPlayerAfterFadeOut()) slot.Pause();
+			float vol = fadeIn ? std::min(volumeResult.second, slot->GetLimitFadeVolume()) : std::max(volumeResult.second, slot->GetLimitFadeVolume());
+			slot->SetVolume(vol);
+			if (vol == slot->GetLimitFadeVolume()) slot->StopFade();
+			if (vol <= 0 && slot->StopPlayerAfterFadeOut()) slot->Pause();
 		} 
 	}
 }
@@ -164,7 +182,20 @@ void Music::Slot::Close()
 {
 	Pause();
 	musicPlayer.reset();
+}
+
+void Music::StandardSlot::Close()
+{
+	Music::Slot::Close();
 	decoder.reset();
+}
+
+void Music::DynamicSlot::Close()
+{
+	Music::Slot::Close();
+	musicPlayer.reset();
+	dynamic_music_presets.clear();
+	dynamic_music_segments.clear();
 }
 
 bool Music::Slot::SetParameters(bool loop, float volume)
@@ -175,17 +206,81 @@ bool Music::Slot::SetParameters(bool loop, float volume)
 	return true;
 }
 
-void Music::Slot::Play()
+void Music::StandardSlot::Play()
 {
 	if (!OpenALManager::Get() || Playing()) return;
 	musicPlayer = OpenALManager::Get()->PlayMusic(decoder, parameters);
 }
 
+void Music::DynamicSlot::Play()
+{
+	if (!OpenALManager::Get() || Playing()) return;
+	musicPlayer = OpenALManager::Get()->PlayDynamicMusic(dynamic_music_presets, default_preset_index, default_segment_index, parameters);
+}
+
+int Music::DynamicSlot::LoadTrack(FileSpecifier* file)
+{
+	std::shared_ptr<StreamDecoder> segment_decoder = file ? StreamDecoder::Get(*file) : nullptr;
+	if (!segment_decoder) return NONE;
+	dynamic_music_segments.push_back(segment_decoder);
+	return dynamic_music_segments.size() - 1;
+}
+
+int Music::DynamicSlot::AddPreset()
+{
+	dynamic_music_presets.emplace_back();
+	return dynamic_music_presets.size() - 1;
+}
+
+int Music::DynamicSlot::AddSegmentToPreset(int preset_index, int segment_index)
+{
+	if (preset_index < 0 || preset_index >= dynamic_music_presets.size() || segment_index < 0 || segment_index >= dynamic_music_segments.size())
+		return NONE;
+
+	dynamic_music_presets[preset_index].AddSegment(dynamic_music_segments[segment_index]);
+	return dynamic_music_presets[preset_index].GetSegments().size() - 1;
+}
+
+bool Music::DynamicSlot::SelectStartingSegment(int preset_index, int segment_index)
+{
+	if (!IsSegmentIndexValid(preset_index, segment_index)) return false;
+
+	default_preset_index = preset_index;
+	default_segment_index = segment_index;
+	return true;
+}
+
+bool Music::DynamicSlot::SetNextSegment(int preset_index, int segment_index, int transition_preset_index, int transition_segment_index)
+{
+	if (!IsSegmentIndexValid(preset_index, segment_index) || !IsSegmentIndexValid(transition_preset_index, transition_segment_index) )
+		return false;
+
+	auto segment = dynamic_music_presets[preset_index].GetSegment(segment_index);
+	if (!segment) return false;
+
+	segment->SetNextSegment(transition_preset_index, transition_segment_index);
+	return true;
+}
+
+bool Music::DynamicSlot::IsSegmentIndexValid(int preset_index, int segment_index) const
+{
+	return (preset_index >= 0 && preset_index < dynamic_music_presets.size() &&
+		segment_index >= 0 && segment_index < dynamic_music_presets[preset_index].GetSegments().size());
+}
+
+bool Music::DynamicSlot::SetPresetTransition(int preset_index)
+{
+	auto dynamic_player = std::dynamic_pointer_cast<DynamicMusicPlayer>(musicPlayer);
+	if (!dynamic_player || !dynamic_player->IsActive()) return false;
+	dynamic_player->RequestPresetTransition(preset_index);
+	return true;
+}
+
 bool Music::LoadLevelMusic()
 {
 	FileSpecifier* level_song_file = GetLevelMusic();
-	auto& slot = music_slots[MusicSlot::Level];
-	return slot.Open(level_song_file) && slot.SetParameters(playlist.size() == 1, 1);
+	auto slot = dynamic_cast<StandardSlot*>(music_slots[MusicSlot::Level].get());
+	return slot->Open(level_song_file) && slot->SetParameters(playlist.size() == 1, 1);
 }
 
 void Music::SeedLevelMusic()
@@ -224,7 +319,7 @@ void Music::ClearLevelMusic()
 {
 	playlist.clear(); 
 	marathon_1_song_index = NONE; 
-	music_slots[MusicSlot::Level].SetParameters(true, 1);
+	music_slots[MusicSlot::Level]->SetParameters(true, 1);
 }
 
 void Music::PushBackLevelMusic(const FileSpecifier& file)
@@ -233,7 +328,7 @@ void Music::PushBackLevelMusic(const FileSpecifier& file)
 
 	if (playlist.size() > 1)
 	{
-		music_slots[MusicSlot::Level].SetParameters(false, 1);
+		music_slots[MusicSlot::Level]->SetParameters(false, 1);
 	}
 }
 
