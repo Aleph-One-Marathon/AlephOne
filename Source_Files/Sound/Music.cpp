@@ -193,7 +193,6 @@ void Music::StandardSlot::Close()
 void Music::DynamicSlot::Close()
 {
 	Music::Slot::Close();
-	musicPlayer.reset();
 	dynamic_music_presets.clear();
 	dynamic_music_segments.clear();
 }

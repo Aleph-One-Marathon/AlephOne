@@ -103,7 +103,6 @@ public:
 		std::vector<DynamicMusicPlayer::Preset> dynamic_music_presets;
 		int default_preset_index = 0;
 		int default_segment_index = 0;
-		std::shared_ptr<DynamicMusicPlayer> musicPlayer;
 	};
 
 	bool SetupIntroMusic(FileSpecifier& file);
