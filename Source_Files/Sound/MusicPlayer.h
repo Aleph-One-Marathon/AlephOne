@@ -49,14 +49,14 @@ public:
 	};
 
 	DynamicMusicPlayer(std::vector<Preset>& presets, int starting_preset_index, int starting_segment_index, MusicParameters parameters); //Must not be used outside OpenALManager (public for make_shared)
-	void RequestPresetTransition(int preset_index);
+	bool RequestPresetTransition(int preset_index);
 
 private:
 	int GetNextData(uint8* data, int length) override;
 	std::vector<Preset> music_presets;
 	int current_preset_index;
 	int current_segment_index;
-	std::atomic_int requested_preset_index = NONE;
+	std::atomic_int requested_preset_index;
 
 	friend class OpenALManager;
 };

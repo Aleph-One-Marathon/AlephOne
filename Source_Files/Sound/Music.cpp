@@ -272,8 +272,7 @@ bool Music::DynamicSlot::SetPresetTransition(int preset_index)
 {
 	auto dynamic_player = std::dynamic_pointer_cast<DynamicMusicPlayer>(musicPlayer);
 	if (!dynamic_player || !dynamic_player->IsActive()) return false;
-	dynamic_player->RequestPresetTransition(preset_index);
-	return true;
+	return dynamic_player->RequestPresetTransition(preset_index);
 }
 
 bool Music::LoadLevelMusic()
