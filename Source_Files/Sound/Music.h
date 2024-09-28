@@ -60,7 +60,7 @@ public:
 		MusicParameters parameters;
 	public:
 		void Fade(float limitVolume, short duration, bool stopOnNoVolume = true);
-		bool Playing() const { return IsInit() && musicPlayer && musicPlayer->IsActive(); }
+		bool Playing() const { return musicPlayer && musicPlayer->IsActive(); }
 		void Pause();
 		virtual void Close();
 		virtual bool IsInit() const = 0;
@@ -88,7 +88,7 @@ public:
 
 	class DynamicSlot : public Slot {
 	public:
-		bool IsInit() const override { return true; };
+		bool IsInit() const override { return IsSegmentIndexValid(default_preset_index, default_segment_index); };
 		void Close() override;
 		void Play() override;
 		int LoadTrack(FileSpecifier* file);

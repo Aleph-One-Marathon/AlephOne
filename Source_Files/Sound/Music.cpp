@@ -147,7 +147,7 @@ void Music::Idle()
 	for (int i = 0; i < music_slots.size(); i++) {
 
 		auto& slot = music_slots.at(i);
-		if (slot->IsInit() && slot->IsFading()) {
+		if (slot->Playing() && slot->IsFading()) {
 			auto volumeResult = slot->ComputeFadingVolume();
 			bool fadeIn = volumeResult.first;
 			float vol = fadeIn ? std::min(volumeResult.second, slot->GetLimitFadeVolume()) : std::max(volumeResult.second, slot->GetLimitFadeVolume());
@@ -207,13 +207,13 @@ bool Music::Slot::SetParameters(bool loop, float volume)
 
 void Music::StandardSlot::Play()
 {
-	if (!OpenALManager::Get() || Playing()) return;
+	if (!OpenALManager::Get() || !IsInit() || Playing()) return;
 	musicPlayer = OpenALManager::Get()->PlayMusic(decoder, parameters);
 }
 
 void Music::DynamicSlot::Play()
 {
-	if (!OpenALManager::Get() || Playing()) return;
+	if (!OpenALManager::Get() || !IsInit() || Playing()) return;
 	musicPlayer = OpenALManager::Get()->PlayDynamicMusic(dynamic_music_presets, default_preset_index, default_segment_index, parameters);
 }
 
