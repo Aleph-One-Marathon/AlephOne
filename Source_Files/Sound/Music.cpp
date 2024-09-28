@@ -194,7 +194,7 @@ void Music::DynamicSlot::Close()
 {
 	Music::Slot::Close();
 	dynamic_music_presets.clear();
-	dynamic_music_segments.clear();
+	dynamic_music_tracks.clear();
 }
 
 bool Music::Slot::SetParameters(bool loop, float volume)
@@ -221,8 +221,8 @@ int Music::DynamicSlot::LoadTrack(FileSpecifier* file)
 {
 	std::shared_ptr<StreamDecoder> segment_decoder = file ? StreamDecoder::Get(*file) : nullptr;
 	if (!segment_decoder) return NONE;
-	dynamic_music_segments.push_back(segment_decoder);
-	return dynamic_music_segments.size() - 1;
+	dynamic_music_tracks.push_back(segment_decoder);
+	return dynamic_music_tracks.size() - 1;
 }
 
 int Music::DynamicSlot::AddPreset()
@@ -231,12 +231,12 @@ int Music::DynamicSlot::AddPreset()
 	return dynamic_music_presets.size() - 1;
 }
 
-int Music::DynamicSlot::AddSegmentToPreset(int preset_index, int segment_index)
+int Music::DynamicSlot::AddSegmentToPreset(int preset_index, int track_index)
 {
-	if (preset_index < 0 || preset_index >= dynamic_music_presets.size() || segment_index < 0 || segment_index >= dynamic_music_segments.size())
+	if (preset_index < 0 || preset_index >= dynamic_music_presets.size() || track_index < 0 || track_index >= dynamic_music_tracks.size())
 		return NONE;
 
-	dynamic_music_presets[preset_index].AddSegment(dynamic_music_segments[segment_index]);
+	dynamic_music_presets[preset_index].AddSegment(dynamic_music_tracks[track_index]);
 	return dynamic_music_presets[preset_index].GetSegments().size() - 1;
 }
 

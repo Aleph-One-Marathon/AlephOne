@@ -93,13 +93,13 @@ public:
 		void Play() override;
 		int LoadTrack(FileSpecifier* file);
 		int AddPreset();
-		int AddSegmentToPreset(int preset_index, int segment_index);
+		int AddSegmentToPreset(int preset_index, int track_index);
 		bool SelectStartingSegment(int preset_index, int segment_index);
 		bool IsSegmentIndexValid(int preset_index, int segment_index) const;
 		bool SetNextSegment(int preset_index, int segment_index, int transition_preset_index, int transition_segment_index);
 		bool SetPresetTransition(int preset_index);
 	private:
-		std::vector<DynamicMusicPlayer::Segment> dynamic_music_segments;
+		std::vector<DynamicMusicPlayer::Segment> dynamic_music_tracks;
 		std::vector<DynamicMusicPlayer::Preset> dynamic_music_presets;
 		int default_preset_index = 0;
 		int default_segment_index = 0;
