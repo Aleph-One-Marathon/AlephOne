@@ -78,7 +78,7 @@ static int Lua_Music_Volume_Set(lua_State* L)
 
 static bool Lua_Music_Valid(int16 index)
 {
-	return index >= 0 ? Music::instance()->GetSlot(index + Music::reserved_music_slots) : nullptr;
+	return Music::instance()->GetSlot(index + Music::reserved_music_slots);
 }
 
 static int Lua_MusicManager_New(lua_State* L)
