@@ -86,17 +86,16 @@ void Music::Fade(float limitVolume, short duration, bool stopOnNoVolume, int ind
 
 void Music::Slot::Fade(float limitVolume, short duration, bool stopOnNoVolume)
 {
-	if (Playing())
-	{
-		auto currentVolume = musicPlayer->GetParameters().volume;
-		if (currentVolume == limitVolume) return;
+	if (!Playing()) return;
 
-		music_fade_start_volume = currentVolume;
-		music_fade_limit_volume = limitVolume;
-		music_fade_start = SoundManager::GetCurrentAudioTick();
-		music_fade_duration = duration;
-		music_fade_stop_no_volume = stopOnNoVolume;
-	}
+	auto currentVolume = musicPlayer->GetParameters().volume;
+	if (currentVolume == limitVolume) return;
+
+	music_fade_start_volume = currentVolume;
+	music_fade_limit_volume = limitVolume;
+	music_fade_start = SoundManager::GetCurrentAudioTick();
+	music_fade_duration = duration;
+	music_fade_stop_no_volume = stopOnNoVolume;
 }
 
 int Music::Load(FileSpecifier& file, bool loop, float volume)
@@ -147,7 +146,7 @@ void Music::Idle()
 	for (int i = 0; i < music_slots.size(); i++) {
 
 		auto& slot = music_slots.at(i);
-		if (slot->Playing() && slot->IsFading()) {
+		if (slot->IsFading()) {
 			auto volumeResult = slot->ComputeFadingVolume();
 			bool fadeIn = volumeResult.first;
 			float vol = fadeIn ? std::min(volumeResult.second, slot->GetLimitFadeVolume()) : std::max(volumeResult.second, slot->GetLimitFadeVolume());
