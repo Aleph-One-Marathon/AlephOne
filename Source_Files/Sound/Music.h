@@ -108,8 +108,7 @@ public:
 	bool SetupIntroMusic(FileSpecifier& file);
 	void RestartIntroMusic();
 	Slot* GetSlot(int index) const { return index >= reserved_music_slots && index < music_slots.size() ? music_slots[index].get() : nullptr; }
-	DynamicSlot* GetDynamicSlot(int index) const { return index >= reserved_music_slots && index < music_slots.size() ? dynamic_cast<DynamicSlot*>(music_slots[index].get()) : nullptr; }
-
+	DynamicSlot* GetDynamicSlot(int index) const { return dynamic_cast<DynamicSlot*>(GetSlot(index)); }
 	void Fade(float limitVolume, short duration, bool stopOnNoVolume = true, int index = NONE);
 	void Pause(int index = NONE);
 	bool Playing(int index = NONE);
@@ -122,7 +121,6 @@ public:
 	void LevelMusicRandom(bool fRandom) { random_order = fRandom; }
 	void SeedLevelMusic();
 	void SetClassicLevelMusic(short song_index);
-	bool HasClassicLevelMusic() const { return marathon_1_song_index >= 0; }
 private:
 	std::vector<std::unique_ptr<Slot>> music_slots;
 
