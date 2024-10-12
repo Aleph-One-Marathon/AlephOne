@@ -145,8 +145,8 @@ public:
 		d.set_processing_function(std::bind(&SdlMetaserverClientUi::pump, this, std::placeholders::_1));
 		int result = d.run();
 
-		if(result == -1)
-			obj_clear(m_joinAddress);
+		if (result == -1)
+			m_joinAddress = IPaddress("0", 0);
 
 		return result;
 	}
@@ -154,6 +154,11 @@ public:
 	void Stop()
 	{
 		dialog_ok(&d);
+	}
+
+	void Cancel()
+	{
+		dialog_cancel(&d);
 	}
 
 	void InfoClicked()

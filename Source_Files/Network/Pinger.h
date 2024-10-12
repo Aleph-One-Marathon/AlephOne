@@ -21,7 +21,7 @@
 
 #if !defined(DISABLE_NETWORKING)
 
-#include <SDL2/SDL_net.h>
+#include "NetworkInterface.h"
 #include <unordered_map>
 #include <atomic>
 

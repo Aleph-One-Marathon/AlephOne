@@ -28,6 +28,9 @@
 #include "Logging.h"
 #include "OpenALManager.h"
 
+#if defined _MSC_VER
+#define NOMINMAX
+#endif
 #include <algorithm>
 
 // for CPU count

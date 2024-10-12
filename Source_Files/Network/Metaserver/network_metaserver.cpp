@@ -173,9 +173,7 @@ const std::vector<GameListMessage::GameListEntry> MetaserverClient::gamesInRoomU
 			if (game.running()) continue;
 			if (!reset_ping && ping_games.find(game.id()) != ping_games.end()) continue;
 
-			IPaddress address = {};
-			memcpy(&address.host, &game.m_ipAddress, sizeof(address.host));
-			address.port = SDL_SwapBE16(game.m_port);
+			IPaddress address(game.m_ipAddress, game.m_port);
 			ping_games[game.id()] = pinger->Register(address);
 		}
 

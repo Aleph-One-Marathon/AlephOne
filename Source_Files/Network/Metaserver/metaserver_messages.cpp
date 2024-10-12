@@ -308,8 +308,13 @@ RoomDescription::read(AIStream& inStream)
 	inStream >> m_id
 		>> m_playerCount;
 
-	inStream.read((char*) &(m_address.host), sizeof(m_address.host));
-	inStream.read((char*) &(m_address.port), sizeof(m_address.port));
+	uint16_t port;
+	uint8_t host[4];
+
+	inStream.read(host, sizeof(host));
+	m_address.set_address(host);
+	inStream >> port;
+	m_address.set_port(port);
 
 	inStream >> m_gameCount
 		>> m_type;

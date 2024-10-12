@@ -88,10 +88,6 @@
 
 #include "OGL_Headers.h"
 
-#if !defined(DISABLE_NETWORKING)
-#include <SDL2/SDL_net.h>
-#endif
-
 #ifdef HAVE_PNG
 #include "IMG_savepng.h"
 #endif
@@ -561,16 +557,6 @@ void initialize_application(void)
 // 	SDL_WM_SetIcon(IMG_ReadXPMFromArray(const_cast<char**>(alephone_xpm)), 0);
 // #endif
 
-#if !defined(DISABLE_NETWORKING)
-	if (SDLNet_Init() < 0)
-	{
-		std::ostringstream oss;
-		oss << "Couldn't initialize SDL_net (" << SDLNet_GetError() << ")";
-
-		throw std::runtime_error(oss.str());
-	}
-#endif
-
 	if (TTF_Init() < 0)
 	{
 		std::ostringstream oss;
@@ -609,9 +595,7 @@ void shutdown_application(void)
 #if defined(HAVE_SDL_IMAGE) && (SDL_IMAGE_PATCHLEVEL >= 8)
 	IMG_Quit();
 #endif
-#if !defined(DISABLE_NETWORKING)
-	SDLNet_Quit();
-#endif
+
 	TTF_Quit();
 	SDL_Quit();
 
