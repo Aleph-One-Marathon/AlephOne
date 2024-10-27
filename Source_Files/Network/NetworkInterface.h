@@ -44,7 +44,7 @@ public:
     IPaddress() = default;
     bool is_v4() const { return _address.is_v4(); }
     std::string address() const { return _address.to_string(); }
-    std::array<unsigned char, 4> IPaddress::address_bytes() const { return _address.to_v4().to_bytes(); }
+    std::array<unsigned char, 4> address_bytes() const { return _address.to_v4().to_bytes(); }
     uint16_t port() const { return _port; }
     void set_port(uint16_t port);
     void set_address(const std::string& host);
@@ -112,11 +112,11 @@ private:
     asio::io_service _io_context;
     asio::ip::tcp::resolver _resolver;
 public:
-    NetworkInterface::NetworkInterface();
+    NetworkInterface();
     std::unique_ptr<UDPsocket> udp_open_socket(uint16_t port);
     std::unique_ptr<TCPsocket> tcp_connect_socket(const IPaddress& address);
     std::unique_ptr<TCPlistener> tcp_open_listener(uint16_t port);
-    std::optional<IPaddress> NetworkInterface::resolve_address(const std::string& host, uint16_t port);
+    std::optional<IPaddress> resolve_address(const std::string& host, uint16_t port);
 };
 
 #endif // NETWORK_INTERFACE_H
