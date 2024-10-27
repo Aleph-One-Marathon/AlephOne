@@ -53,9 +53,9 @@ static void read_string(AIStream& inputStream, char *s, size_t length) {
 
 static void deflateNetPlayer(AOStream& outputStream, const NetPlayer &player) {
 
-  outputStream.write((byte *) &player.dspAddress.address_bytes(), 4);
+	outputStream.write(player.dspAddress.address_bytes().data(), 4);
   outputStream << player.dspAddress.port();
-  outputStream.write((byte *) &player.ddpAddress.address_bytes(), 4);
+  outputStream.write(player.ddpAddress.address_bytes().data(), 4);
   outputStream << player.ddpAddress.port();
   outputStream << player.identifier;
   outputStream << player.stream_id;
@@ -326,9 +326,9 @@ void TopologyMessage::reallyDeflateTo(AOStream& outputStream) const {
     deflateNetPlayer(outputStream, mTopology.players[i]);
   }
 
-  outputStream.write((byte*)&mTopology.server.dspAddress.address_bytes(), 4);
+  outputStream.write(mTopology.server.dspAddress.address_bytes().data(), 4);
   outputStream << mTopology.server.dspAddress.port();
-  outputStream.write((byte*)&mTopology.server.ddpAddress.address_bytes(), 4);
+  outputStream.write(mTopology.server.ddpAddress.address_bytes().data(), 4);
   outputStream << mTopology.server.ddpAddress.port();
 }
 
