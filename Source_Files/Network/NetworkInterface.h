@@ -71,14 +71,18 @@ class UDPsocket {
 private:
     asio::io_service& _io_context;
     asio::ip::udp::socket _socket;
+    asio::ip::udp::endpoint _receive_async_endpoint;
+    int64_t _receive_async_return_value = 0;
     UDPsocket(asio::io_service& io_context, const asio::ip::udp::endpoint& endpoint);
     friend class NetworkInterface;
 public:
     int64_t broadcast_send(const UDPpacket& packet);
     int64_t send(const UDPpacket& packet);
     int64_t receive(UDPpacket& packet);
+    void register_receive_async(UDPpacket& packet);
+    int64_t receive_async(int timeout_ms);
     bool broadcast(bool enable);
-    bool set_receive_timeout(int timeout_ms);
+    int64_t check_receive() const;
 };
 
 class TCPsocket {

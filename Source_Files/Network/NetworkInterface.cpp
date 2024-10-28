@@ -97,11 +97,29 @@ int64_t UDPsocket::receive(UDPpacket& packet)
     return result;
 }
 
-bool UDPsocket::set_receive_timeout(int timeout_ms)
+void UDPsocket::register_receive_async(UDPpacket& packet)
 {
-    asio::error_code error_code;
-    _socket.set_option(asio::detail::socket_option::integer<SOL_SOCKET, SO_RCVTIMEO>{ timeout_ms }, error_code);
-    return !error_code;
+    _receive_async_return_value = 0;
+    _socket.async_receive_from(asio::buffer(packet.buffer), _receive_async_endpoint,
+        [&packet, this](const asio::error_code& error, std::size_t bytes_transferred) {
+            _receive_async_return_value = error ? -1 : bytes_transferred;
+            if (error) return;
+            packet.data_size = bytes_transferred;
+            packet.address = _receive_async_endpoint;
+        });
+}
+
+int64_t UDPsocket::receive_async(int timeout_ms)
+{
+    if (_io_context.stopped()) _io_context.restart();
+
+    _io_context.run_for(std::chrono::milliseconds(timeout_ms));
+    return _receive_async_return_value;
+}
+
+int64_t UDPsocket::check_receive() const
+{
+    return _socket.available();
 }
 
 bool UDPsocket::broadcast(bool enable)

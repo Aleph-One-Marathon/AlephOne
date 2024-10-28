@@ -53,7 +53,7 @@ static void read_string(AIStream& inputStream, char *s, size_t length) {
 
 static void deflateNetPlayer(AOStream& outputStream, const NetPlayer &player) {
 
-	outputStream.write(player.dspAddress.address_bytes().data(), 4);
+  outputStream.write(player.dspAddress.address_bytes().data(), 4);
   outputStream << player.dspAddress.port();
   outputStream.write(player.ddpAddress.address_bytes().data(), 4);
   outputStream << player.ddpAddress.port();

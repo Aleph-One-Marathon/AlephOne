@@ -50,12 +50,28 @@ static int
 receive_thread_function(void*) {
 
 	UDPpacket packet;
+	sSocket->register_receive_async(packet);
+
+	bool got_packet = false;
+	int receive_result = 0;
 
 	while (sKeepListening) {
 
-		if (sSocket->receive(packet) > 0 && take_mytm_mutex()) {
+		if (!got_packet)
+		{
+			receive_result = sSocket->receive_async(1000);
+			got_packet = receive_result > 0;
+		}
+
+		if (got_packet && take_mytm_mutex()) {
 			sPacketHandler(packet);
 			release_mytm_mutex();
+			got_packet = false;
+		}
+
+		if (!got_packet && receive_result != 0)
+		{
+			sSocket->register_receive_async(packet);
 		}
 	}
 
@@ -81,7 +97,7 @@ bool NetDDPOpenSocket(uint16_t ioPortNumber, PacketHandlerProcPtr packetHandler)
 	bool theResult = BoostThreadPriority(sReceivingThread);
 	if (theResult == false)
 		fdprintf("warning: BoostThreadPriority() failed; network performance may suffer\n");
-	return sSocket != nullptr && sSocket->set_receive_timeout(1000);
+	return sSocket != nullptr;
 }
 
 

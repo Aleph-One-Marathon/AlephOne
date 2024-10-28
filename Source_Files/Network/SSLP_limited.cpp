@@ -639,12 +639,8 @@ SSLP_Pump() {
     
     // Do receiving work every time
     if(sBehaviorsDesired & (SSLPINT_LOCATING | SSLPINT_RESPONDING)) {
-
-        int theResult = sSocketDescriptor->receive(sReceivingPacket);
-        
-        while (theResult > 0) {
+        while (sSocketDescriptor->check_receive() > 0 && sSocketDescriptor->receive(sReceivingPacket) > 0) {
             SSLPint_ReceivedPacket();
-            theResult = sSocketDescriptor->receive(sReceivingPacket);
         }
     }
 }
