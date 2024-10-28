@@ -149,7 +149,9 @@ getNetworkPlayer(size_t inIndex)
 static void
 send_frame_to_local_hub(const UDPpacket& frame)
 {
+	static IPaddress hubLocalAddress = IPaddress("127.0.0.1", 0);
 	sLocalOutgoingBuffer = frame;
+	sLocalOutgoingBuffer.address = hubLocalAddress;
     sNeedToSendLocalOutgoingBuffer = true;
 }
 

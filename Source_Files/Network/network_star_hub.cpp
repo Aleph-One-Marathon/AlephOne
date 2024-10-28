@@ -357,7 +357,9 @@ static void
 send_frame_to_local_spoke(UDPpacket& frame)
 {
 #ifndef A1_NETWORK_STANDALONE_HUB
+        static IPaddress spokeLocalAddress = IPaddress("127.0.0.1", 0);
         sLocalOutgoingBuffer = frame;
+		sLocalOutgoingBuffer.address = spokeLocalAddress;
         sNeedToSendLocalOutgoingBuffer = true;
 #else
 	// Standalone hub should never call this routine
@@ -462,8 +464,6 @@ hub_initialize(int32 inStartingTick, int inNumPlayers, const IPaddress* const* i
                         thePlayer.mConnected = true;
                         sConnectedPlayersBitmask |= (((uint32)1) << i);
 			thePlayer.mAddressKnown = false;
-                        // thePlayer.mAddress = *(inPlayerAddresses[i]); (jkvw: see note below)
-                        // Currently, all-0 address is cue for local spoke.
 			// jkvw: The "real" addresses for spokes won't be known unti we get some UDP traffic
 			//	 from them - we'll update as they become known.
                         if(i == sLocalPlayerIndex) { // jkvw: I don't need this, do I?
