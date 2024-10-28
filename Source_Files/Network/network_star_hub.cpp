@@ -357,9 +357,7 @@ static void
 send_frame_to_local_spoke(UDPpacket& frame)
 {
 #ifndef A1_NETWORK_STANDALONE_HUB
-        static IPaddress spokeLocalAddress = IPaddress("127.0.0.1", 0);
         sLocalOutgoingBuffer = frame;
-		sLocalOutgoingBuffer.address = spokeLocalAddress;
         sNeedToSendLocalOutgoingBuffer = true;
 #else
 	// Standalone hub should never call this routine
@@ -381,6 +379,11 @@ check_send_packet_to_spoke()
 #endif // A1_NETWORK_STANDALONE_HUB
 }
 
+static int get_player_index_from_address(const IPaddress& address)
+{
+	auto it = sAddressToPlayerIndex.find(address);
+	return it != sAddressToPlayerIndex.end() ? it->second : NONE;
+}
 
 
 #ifndef INT32_MAX
@@ -463,14 +466,9 @@ hub_initialize(int32 inStartingTick, int inNumPlayers, const IPaddress* const* i
 #endif
                         thePlayer.mConnected = true;
                         sConnectedPlayersBitmask |= (((uint32)1) << i);
-			thePlayer.mAddressKnown = false;
-			// jkvw: The "real" addresses for spokes won't be known unti we get some UDP traffic
-			//	 from them - we'll update as they become known.
-                        if(i == sLocalPlayerIndex) { // jkvw: I don't need this, do I?
-							thePlayer.mAddress = IPaddress("127.0.0.1", 0);
-				sAddressToPlayerIndex[thePlayer.mAddress] = i;
-				thePlayer.mAddressKnown = true;
-			}
+						thePlayer.mAddressKnown = i == sLocalPlayerIndex;
+						// jkvw: The "real" addresses for spokes won't be known unti we get some UDP traffic
+						//	 from them - we'll update as they become known.
                 }
                 else
                 {
@@ -613,7 +611,7 @@ hub_check_for_completion()
 
 
 void
-hub_received_network_packet(UDPpacket& inPacket)
+hub_received_network_packet(UDPpacket& inPacket, bool from_local_spoke)
 {
 	logContextNMT("hub processing a received packet");
 	
@@ -640,10 +638,10 @@ hub_received_network_packet(UDPpacket& inPacket)
 		{
 			if (thePacketMagic == kSpokeToHubGameDataPacketV1Magic)
 			{
-				AddressToPlayerIndexType::iterator theEntry = sAddressToPlayerIndex.find(inPacket.address);
-				if (theEntry != sAddressToPlayerIndex.end())
+				int theSenderIndex = from_local_spoke ? sLocalPlayerIndex : get_player_index_from_address(inPacket.address);
+
+				if (theSenderIndex != NONE)
 				{
-					int theSenderIndex = theEntry->second;
 					getNetworkPlayer(theSenderIndex).mStats.errors++;
 				}
 			}
@@ -654,12 +652,8 @@ hub_received_network_packet(UDPpacket& inPacket)
                 {
                         case kSpokeToHubGameDataPacketV1Magic:
 			{
-				// Find sender
-				AddressToPlayerIndexType::iterator theEntry = sAddressToPlayerIndex.find(inPacket.address);
-				if(theEntry == sAddressToPlayerIndex.end())
-					return;
-				
-				int theSenderIndex = theEntry->second;
+				int theSenderIndex = from_local_spoke ? sLocalPlayerIndex : get_player_index_from_address(inPacket.address);
+				if (theSenderIndex == NONE) return;
 				
 				if (getNetworkPlayer(theSenderIndex).mConnected)
 				{

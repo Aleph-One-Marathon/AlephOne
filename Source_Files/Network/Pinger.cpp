@@ -120,11 +120,11 @@ std::unordered_map<uint16_t, uint16_t> Pinger::GetResponseTime(uint16_t timeout_
 	return results;
 }
 
-void Pinger::StoreResponse(uint16_t identifier)
+void Pinger::StoreResponse(uint16_t identifier, const IPaddress& address)
 {
 	auto ping_request = _registered_ipv4s.find(identifier);
 
-	if (ping_request != _registered_ipv4s.end() && !ping_request->second.pong_received_tick)
+	if (ping_request != _registered_ipv4s.end() && ping_request->second.ipv4 == address && !ping_request->second.pong_received_tick)
 	{
 		ping_request->second.pong_received_tick = machine_tick_count();
 	}

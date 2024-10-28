@@ -281,7 +281,6 @@ void NetInitializeSessionIdentifier(void);
 // reason to try to keep that... and I suspect Jason abandoned this separation long ago anyway.
 // For now, the only effect I see is a reduction in type-safety.  :)
 static void NetInitializeTopology(void *game_data, short game_data_size, void *player_data, short player_data_size);
-static void NetLocalAddrBlock(IPaddress *address, short socketNumber);
 
 static void NetUpdateTopology(void);
 static void NetDistributeTopology(short tag);
@@ -1833,8 +1832,8 @@ static void NetInitializeTopology(
 	localPlayerIndex = localPlayerIdentifier = NONE;
 	topology->player_count = 0;
 	topology->nextIdentifier = 0;
-	NetLocalAddrBlock(&topology->server.dspAddress, GAME_PORT);
-	NetLocalAddrBlock(&topology->server.ddpAddress, GAME_PORT);
+	topology->server.dspAddress.set_port(GAME_PORT);
+	topology->server.ddpAddress.set_port(GAME_PORT);
 #else
 	topology->player_count = 1;
 	localPlayerIndex = localPlayerIdentifier = 0;
@@ -1847,8 +1846,8 @@ static void NetInitializeTopology(
 	local_player->net_dead = false;
 	local_player->stream_id = 0;
 
-	NetLocalAddrBlock(&local_player->dspAddress, GAME_PORT);
-	NetLocalAddrBlock(&local_player->ddpAddress, GAME_PORT);
+	local_player->dspAddress.set_port(GAME_PORT);
+	local_player->ddpAddress.set_port(GAME_PORT);
 
 	topology->server.dspAddress = local_player->dspAddress;
 	topology->server.ddpAddress = local_player->ddpAddress;
@@ -1864,16 +1863,6 @@ static void NetInitializeTopology(
 		memcpy(&topology->game_data, game_data, game_data_size);
 	gameSessionIdentifier.clear();
 }
-
-static void NetLocalAddrBlock(
-	IPaddress *address,
-	short socketNumber)
-{
-	address->set_port(socketNumber);
-	address->set_address("127.0.0.1");
-}
-
-
 
 static void NetUpdateTopology(
 	void)

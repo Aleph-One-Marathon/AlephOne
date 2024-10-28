@@ -149,24 +149,21 @@ getNetworkPlayer(size_t inIndex)
 static void
 send_frame_to_local_hub(const UDPpacket& frame)
 {
-	static IPaddress hubLocalAddress = IPaddress("127.0.0.1", 0);
 	sLocalOutgoingBuffer = frame;
-	sLocalOutgoingBuffer.address = hubLocalAddress;
-    sNeedToSendLocalOutgoingBuffer = true;
+	sNeedToSendLocalOutgoingBuffer = true;
 }
-
 
 
 static inline void
 check_send_packet_to_hub()
 {
-        if(sNeedToSendLocalOutgoingBuffer)
+	if(sNeedToSendLocalOutgoingBuffer)
 	{
 		logContextNMT("delivering stored packet to local hub");
-                hub_received_network_packet(sLocalOutgoingBuffer);
+		hub_received_network_packet(sLocalOutgoingBuffer, true);
 	}
 
-        sNeedToSendLocalOutgoingBuffer = false;
+	sNeedToSendLocalOutgoingBuffer = false;
 }
 
 
@@ -663,7 +660,7 @@ spoke_received_ping_response(AIStream& ps, const IPaddress& address)
 	ps >> pingIdentifier;
 
 	if (auto pinger = NetGetPinger().lock())
-		pinger->StoreResponse(pingIdentifier);
+		pinger->StoreResponse(pingIdentifier, address);
 	else
 		logWarningNMT("Received unexpected ping response packet");
 } // spoke_received_ping_response()

@@ -66,7 +66,7 @@ class InfoTree;
 
 extern void hub_initialize(int32 inStartingTick, int inNumPlayers, const IPaddress* const* inPlayerAddresses, int inLocalPlayerIndex);
 extern void hub_cleanup(bool inGraceful, int32 inSmallestPostGameTick);
-extern void hub_received_network_packet(UDPpacket& inPacket);
+extern void hub_received_network_packet(UDPpacket& inPacket, bool from_local_spoke = false);
 extern bool hub_is_active();
 extern void DefaultHubPreferences();
 extern InfoTree HubPreferencesTree();

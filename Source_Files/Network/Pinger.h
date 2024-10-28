@@ -31,7 +31,7 @@ public:
 	uint16_t Register(const IPaddress& ipv4);
 	void Ping(uint8_t number_of_tries = 1, bool unpinged_addresses_only = false);
 	std::unordered_map<uint16_t, uint16_t> GetResponseTime(uint16_t timeout_ms = 0);
-	void StoreResponse(uint16_t identifier);
+	void StoreResponse(uint16_t identifier, const IPaddress& address);
 private:
 
 	struct PingAddress
