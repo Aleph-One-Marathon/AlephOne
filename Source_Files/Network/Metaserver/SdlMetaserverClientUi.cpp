@@ -143,12 +143,7 @@ public:
 	int Run()
 	{
 		d.set_processing_function(std::bind(&SdlMetaserverClientUi::pump, this, std::placeholders::_1));
-		int result = d.run();
-
-		if (result == -1)
-			m_joinAddress = IPaddress("0", 0);
-
-		return result;
+		return d.run();
 	}
 	
 	void Stop()

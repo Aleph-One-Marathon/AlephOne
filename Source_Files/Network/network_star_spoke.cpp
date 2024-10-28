@@ -147,11 +147,9 @@ getNetworkPlayer(size_t inIndex)
 
 
 static void
-send_frame_to_local_hub(const UDPpacket& frame, IPaddress*address)
+send_frame_to_local_hub(const UDPpacket& frame)
 {
 	sLocalOutgoingBuffer = frame;
-    // An all-0 sourceAddress is the cue for "local spoke" currently.
-	sLocalOutgoingBuffer.address = IPaddress("0", 0);
     sNeedToSendLocalOutgoingBuffer = true;
 }
 
@@ -897,7 +895,7 @@ send_packet()
                 sOutgoingFrame.data_size = ps.tellp();
 
                 if(sHubIsLocal)
-                        send_frame_to_local_hub(sOutgoingFrame, &sHubAddress);
+                        send_frame_to_local_hub(sOutgoingFrame);
                 else
                         NetDDPSendFrame(sOutgoingFrame, sHubAddress);
 
@@ -932,7 +930,7 @@ send_identification_packet()
                 // Send the packet
                 sOutgoingFrame.data_size = ps.tellp();
                 if(sHubIsLocal)
-                        send_frame_to_local_hub(sOutgoingFrame, &sHubAddress);
+                        send_frame_to_local_hub(sOutgoingFrame);
                 else
                         NetDDPSendFrame(sOutgoingFrame, sHubAddress);
         }

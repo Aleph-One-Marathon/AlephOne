@@ -354,7 +354,7 @@ getLateFlagsQueue(size_t inIndex)
 
 
 static void
-send_frame_to_local_spoke(UDPpacket& frame, IPaddress *address)
+send_frame_to_local_spoke(UDPpacket& frame)
 {
 #ifndef A1_NETWORK_STANDALONE_HUB
         sLocalOutgoingBuffer = frame;
@@ -467,7 +467,7 @@ hub_initialize(int32 inStartingTick, int inNumPlayers, const IPaddress* const* i
 			// jkvw: The "real" addresses for spokes won't be known unti we get some UDP traffic
 			//	 from them - we'll update as they become known.
                         if(i == sLocalPlayerIndex) { // jkvw: I don't need this, do I?
-							thePlayer.mAddress = IPaddress("0", 0);
+							thePlayer.mAddress = IPaddress("127.0.0.1", 0);
 				sAddressToPlayerIndex[thePlayer.mAddress] = i;
 				thePlayer.mAddressKnown = true;
 			}
@@ -1508,7 +1508,7 @@ send_packets()
                                 // Send the packet
                                 sOutgoingFrame.data_size = ps.tellp();
                                 if(i == sLocalPlayerIndex)
-                                        send_frame_to_local_spoke(sOutgoingFrame, &thePlayer.mAddress);
+                                        send_frame_to_local_spoke(sOutgoingFrame);
                                 else
                                         NetDDPSendFrame(sOutgoingFrame, thePlayer.mAddress);
                         } // try

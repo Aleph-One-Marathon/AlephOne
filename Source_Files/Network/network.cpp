@@ -1870,7 +1870,7 @@ static void NetLocalAddrBlock(
 	short socketNumber)
 {
 	address->set_port(socketNumber);
-	address->set_address("0");
+	address->set_address("127.0.0.1");
 }
 
 
