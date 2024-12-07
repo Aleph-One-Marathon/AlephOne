@@ -65,7 +65,7 @@ public:
 		virtual void Close();
 		virtual bool IsInit() const = 0;
 		virtual void Play() = 0;
-		bool SetParameters(bool loop, float volume);
+		bool SetParameters(const MusicParameters& parameters);
 		float GetLimitFadeVolume() const { return music_fade_limit_volume; }
 		bool IsFading() const { return music_fade_start; }
 		bool StopPlayerAfterFadeOut() const { return music_fade_stop_no_volume; }
@@ -112,8 +112,8 @@ public:
 	void Fade(float limitVolume, short duration, bool stopOnNoVolume = true, int index = NONE);
 	void Pause(int index = NONE);
 	bool Playing(int index = NONE);
-	int Load(FileSpecifier& file, bool loop, float volume);
-	int Load(float volume);
+	int Load(FileSpecifier& file, const MusicParameters& parameters);
+	int Load(const MusicParameters& parameters);
 	void Idle();
 	void StopLevelMusic() { music_slots[MusicSlot::Level]->Close(); }
 	void ClearLevelMusic();

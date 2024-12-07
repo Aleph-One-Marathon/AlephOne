@@ -56,8 +56,8 @@ public:
 	void Stop();
 	void StopAllPlayers();
 	std::shared_ptr<SoundPlayer> PlaySound(const Sound& sound, const SoundParameters& parameters);
-	std::shared_ptr<MusicPlayer> PlayMusic(std::shared_ptr<StreamDecoder> decoder, MusicParameters parameters);
-	std::shared_ptr<DynamicMusicPlayer> PlayDynamicMusic(std::vector<DynamicMusicPlayer::Preset>& presets, int starting_preset_index, int starting_segment_index, MusicParameters parameters);
+	std::shared_ptr<MusicPlayer> PlayMusic(std::shared_ptr<StreamDecoder> decoder, const MusicParameters& parameters);
+	std::shared_ptr<DynamicMusicPlayer> PlayDynamicMusic(std::vector<DynamicMusicPlayer::Preset>& presets, int starting_preset_index, int starting_segment_index, const MusicParameters& parameters);
 	std::shared_ptr<StreamPlayer> PlayStream(CallBackStreamPlayer callback, int length, int rate, bool stereo, AudioFormat audioFormat);
 	std::unique_ptr<AudioPlayer::AudioSource> PickAvailableSource(const AudioPlayer& audioPlayer);
 	void UpdateListener(world_location3d listener) { listener_location.Set(listener); }

@@ -101,7 +101,7 @@ static int Lua_MusicManager_New(lua_State* L)
 		if (!file.SetNameWithPath(lua_tostring(L, 1))) return 0;
 	}
 
-	int id = Music::instance()->Load(file, loop, volume);
+	int id = Music::instance()->Load(file, {volume, loop});
 	if (id < Music::reserved_music_slots) return 0;
 
 	Lua_Music::Push(L, id - Music::reserved_music_slots);
@@ -111,7 +111,9 @@ static int Lua_MusicManager_New(lua_State* L)
 static int Lua_MusicManager_New_Dynamic(lua_State* L)
 {
 	float volume = lua_isnumber(L, 1) ? static_cast<float>(lua_tonumber(L, 1)) : 1;
-	int id = Music::instance()->Load(volume);
+	bool loop = lua_isboolean(L, 2) ? static_cast<bool>(lua_toboolean(L, 2)) : true;
+
+	int id = Music::instance()->Load({ volume, loop });
 	if (id < Music::reserved_music_slots) return 0;
 
 	Lua_Music::Push(L, id - Music::reserved_music_slots);

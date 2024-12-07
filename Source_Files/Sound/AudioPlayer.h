@@ -99,7 +99,7 @@ protected:
     virtual bool LoadParametersUpdates() { return false; }
     bool IsPlaying() const;
     static int GetOpenALFormat(AudioFormat format, bool is_stereo) { return mapping_audio_format_openal.at({ format, is_stereo }); }
-    bool BufferFormatChanged() const { return queued_rate != rate || queued_format != format; }
+    bool HasBufferFormatChanged() const { return queued_rate != rate || queued_format != format; }
     std::atomic_bool rewind_signal = { false };
     std::atomic_bool stop_signal = { false };
     std::atomic_bool is_active = { true };

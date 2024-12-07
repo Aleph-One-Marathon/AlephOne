@@ -1,7 +1,7 @@
 #include "MusicPlayer.h"
 #include "OpenALManager.h"
 
-MusicPlayer::MusicPlayer(std::shared_ptr<StreamDecoder> decoder, MusicParameters parameters) : AudioPlayer(decoder->Rate(), decoder->IsStereo(), decoder->GetAudioFormat()) {
+MusicPlayer::MusicPlayer(std::shared_ptr<StreamDecoder> decoder, const MusicParameters& parameters) : AudioPlayer(decoder->Rate(), decoder->IsStereo(), decoder->GetAudioFormat()) {
 	this->decoder = decoder;
 	this->parameters = parameters;
 	this->decoder->Rewind();
@@ -21,7 +21,7 @@ SetupALResult MusicPlayer::SetUpALSourceIdle() {
 	return SetupALResult(alGetError() == AL_NO_ERROR, true);
 }
 
-DynamicMusicPlayer::DynamicMusicPlayer(std::vector<Preset>& presets, int starting_preset_index, int starting_segment_index, MusicParameters parameters) 
+DynamicMusicPlayer::DynamicMusicPlayer(std::vector<Preset>& presets, int starting_preset_index, int starting_segment_index, const MusicParameters& parameters)
 	: MusicPlayer(presets[starting_preset_index].GetSegment(starting_segment_index)->GetDecoder(), parameters) {
 	music_presets = presets;
 	current_preset_index = starting_preset_index;
@@ -32,20 +32,22 @@ DynamicMusicPlayer::DynamicMusicPlayer(std::vector<Preset>& presets, int startin
 int DynamicMusicPlayer::GetNextData(uint8* data, int length) {
 	const int dataSize = decoder->Decode(data, length);
 	if (dataSize == length) return dataSize;
-	decoder->Rewind();
 
 	const int nextPresetIndex = requested_preset_index.load();
 	const int nextSegmentIndex = music_presets[current_preset_index].GetSegment(current_segment_index)->GetNextSegmentIndex(nextPresetIndex);
 
-	if (nextSegmentIndex != NONE)
-	{
+	if (nextSegmentIndex != NONE) {
 		current_segment_index = nextSegmentIndex;
 		current_preset_index = nextPresetIndex;
 	}
+	else if (!parameters.Get().loop) {
+		return dataSize;
+	}
 
+	decoder->Rewind();
 	decoder = music_presets[current_preset_index].GetSegment(current_segment_index)->GetDecoder();
 	Init(decoder->Rate(), decoder->IsStereo(), decoder->GetAudioFormat());
-	return BufferFormatChanged() ? dataSize : dataSize + GetNextData(data + dataSize, length - dataSize);
+	return HasBufferFormatChanged() ? dataSize : dataSize + GetNextData(data + dataSize, length - dataSize);
 }
 
 bool DynamicMusicPlayer::RequestPresetTransition(int preset_index) {

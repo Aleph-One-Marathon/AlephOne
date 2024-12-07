@@ -57,7 +57,7 @@ bool Music::StandardSlot::Open(FileSpecifier *file)
 void Music::RestartIntroMusic()
 {
 	auto& introSlot = music_slots[MusicSlot::Intro];
-	if (introSlot->IsInit() && !introSlot->Playing() && introSlot->SetParameters(true, 1)) introSlot->Play();
+	if (introSlot->IsInit() && !introSlot->Playing() && introSlot->SetParameters({true, 1})) introSlot->Play();
 }
 
 void Music::Pause(int index)
@@ -98,19 +98,19 @@ void Music::Slot::Fade(float limitVolume, short duration, bool stopOnNoVolume)
 	music_fade_stop_no_volume = stopOnNoVolume;
 }
 
-int Music::Load(FileSpecifier& file, bool loop, float volume)
+int Music::Load(FileSpecifier& file, const MusicParameters& parameters)
 {
 	auto slot = std::make_unique<StandardSlot>();
-	bool success = slot->Open(&file) && slot->SetParameters(loop, volume);
+	bool success = slot->Open(&file) && slot->SetParameters(parameters);
 	if (!success) return NONE;
 	music_slots.push_back(std::move(slot));
 	return music_slots.size() - 1;
 }
 
-int Music::Load(float volume)
+int Music::Load(const MusicParameters& parameters)
 {
 	auto slot = std::make_unique<DynamicSlot>();
-	bool success = slot->SetParameters(true, volume);
+	bool success = slot->SetParameters(parameters);
 	if (!success) return NONE;
 	music_slots.push_back(std::move(slot));
 	return music_slots.size() - 1;
@@ -168,7 +168,7 @@ std::pair<bool, float> Music::Slot::ComputeFadingVolume() const
 
 void Music::Slot::SetVolume(float volume)
 {
-	SetParameters(parameters.loop, volume);
+	SetParameters({ volume, parameters.loop });
 }
 
 void Music::Slot::Pause()
@@ -196,11 +196,11 @@ void Music::DynamicSlot::Close()
 	dynamic_music_tracks.clear();
 }
 
-bool Music::Slot::SetParameters(bool loop, float volume)
+bool Music::Slot::SetParameters(const MusicParameters& parameters)
 {
-	parameters.loop = loop;
-	parameters.volume = std::max(std::min(volume, 1.f), 0.f);
-	if (musicPlayer) musicPlayer->UpdateParameters(parameters);
+	this->parameters = parameters;
+	this->parameters.volume = std::max(std::min(parameters.volume, 1.f), 0.f);
+	if (musicPlayer) musicPlayer->UpdateParameters(this->parameters);
 	return true;
 }
 
@@ -250,7 +250,7 @@ bool Music::DynamicSlot::SelectStartingSegment(int preset_index, int segment_ind
 
 bool Music::DynamicSlot::SetNextSegment(int preset_index, int segment_index, int transition_preset_index, int transition_segment_index)
 {
-	if (!IsSegmentIndexValid(preset_index, segment_index) || !IsSegmentIndexValid(transition_preset_index, transition_segment_index) )
+	if (!IsSegmentIndexValid(preset_index, segment_index) || !IsSegmentIndexValid(transition_preset_index, transition_segment_index))
 		return false;
 
 	auto segment = dynamic_music_presets[preset_index].GetSegment(segment_index);
@@ -277,7 +277,7 @@ bool Music::LoadLevelMusic()
 {
 	FileSpecifier* level_song_file = GetLevelMusic();
 	auto slot = dynamic_cast<StandardSlot*>(music_slots[MusicSlot::Level].get());
-	return slot->Open(level_song_file) && slot->SetParameters(playlist.size() == 1, 1);
+	return slot->Open(level_song_file) && slot->SetParameters({ 1, playlist.size() == 1 });
 }
 
 void Music::SeedLevelMusic()
@@ -316,7 +316,7 @@ void Music::ClearLevelMusic()
 {
 	playlist.clear(); 
 	marathon_1_song_index = NONE; 
-	music_slots[MusicSlot::Level]->SetParameters(true, 1);
+	music_slots[MusicSlot::Level]->SetParameters({1, true});
 }
 
 void Music::PushBackLevelMusic(const FileSpecifier& file)
@@ -325,7 +325,7 @@ void Music::PushBackLevelMusic(const FileSpecifier& file)
 
 	if (playlist.size() > 1)
 	{
-		music_slots[MusicSlot::Level]->SetParameters(false, 1);
+		music_slots[MusicSlot::Level]->SetParameters({1, false});
 	}
 }
 
