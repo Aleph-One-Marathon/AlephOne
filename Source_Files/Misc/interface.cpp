@@ -151,9 +151,8 @@ extern TP2PerfGlobals perf_globals;
 #include "shell_options.h"
 #include "OpenALManager.h"
 
-#ifdef HAVE_FFMPEG
-#include "SDL_ffmpeg.h"
-#endif
+#define PL_MPEG_IMPLEMENTATION
+#include "pl_mpeg.h"
 
 #include "sdl_dialogs.h"
 #include "sdl_widgets.h"
@@ -3480,49 +3479,47 @@ void exit_networking(void)
  *  Show movie
  */
 
-#ifdef HAVE_FFMPEG
-#ifdef HAVE_OPENGL
-static OGL_Blitter show_movie_blitter;
-#endif
 static SDL_mutex *movie_audio_mutex = NULL;
-static const int AUDIO_BUF_SIZE = 10;
-static SDL_ffmpegAudioFrame *aframes[AUDIO_BUF_SIZE];
-static uint64_t movie_sync = 0;
-static SDL_AudioSpec specs;
-int movie_audio_callback(uint8* stream, int length)
+static std::vector<float> audio_buffer;
+
+static void audio_samples_decoder_callback(plm_t* mpeg, plm_samples_t* samples, void* user)
 {
-	int returnLength = 0;
-	if (movie_audio_mutex && SDL_LockMutex(movie_audio_mutex) != -1)
+	if (SDL_LockMutex(movie_audio_mutex) == 0)
 	{
-		if (aframes[0]->size == length)
-		{
-			movie_sync = aframes[0]->pts;
-			memcpy(stream, aframes[0]->buffer, aframes[0]->size);
-			aframes[0]->size = 0;
-
-			SDL_ffmpegAudioFrame* f = aframes[0];
-			for (int i = 1; i < AUDIO_BUF_SIZE; i++)
-				aframes[i - 1] = aframes[i];
-			aframes[AUDIO_BUF_SIZE - 1] = f;
-			returnLength = length;
-		}
-
+		auto current_size = audio_buffer.size();
+		auto buffer_size = samples->count * 2; //always work on stereo in interleaved mode
+		audio_buffer.resize(current_size + buffer_size);
+		std::copy(samples->interleaved, samples->interleaved + buffer_size, audio_buffer.data() + current_size);
 		SDL_UnlockMutex(movie_audio_mutex);
 	}
-
-	return returnLength;
 }
-#endif
 
-extern bool option_nosound;
+static int audio_player_callback(uint8_t* data, int length)
+{
+	if (audio_buffer.size() && SDL_LockMutex(movie_audio_mutex) == 0)
+	{
+		auto actual_length = std::min(audio_buffer.size() * sizeof(float), (size_t)length);
+		std::memcpy(data, audio_buffer.data(), actual_length);
+		audio_buffer.erase(audio_buffer.begin(), audio_buffer.begin() + actual_length / sizeof(float));
+		SDL_UnlockMutex(movie_audio_mutex);
+		return actual_length;
+	}
+
+	return 0;
+}
+
+static void video_frame_decoder_callback(plm_t* mpeg, plm_frame_t* frame, void* data) 
+{
+	auto vframe = (SDL_Surface*)data;
+	plm_frame_to_rgba(frame, (uint8_t*)vframe->pixels, vframe->pitch);
+}
 
 void show_movie(short index)
 {
 	if (Movie::instance()->IsRecording() || !shell_options.replay_directory.empty())
 		return;
 	
-#if defined(HAVE_FFMPEG)
-	float PlaybackSize = 2;
+	float PlaybackSize = 0;
 	
 	FileSpecifier IntroMovie;
 	FileSpecifier *File = GetLevelMovie(PlaybackSize);
@@ -3534,60 +3531,65 @@ void show_movie(short index)
 	}
 
 	if (!File) return;
-	if (!OpenALManager::Get()) return;
 
 	change_screen_mode(_screentype_chapter);
 
 	SoundManager::Pause pauseSoundManager;
 	SDL_Rect dst_rect = { 0, 0, 640, 480 };
 
-	SDL_ffmpegFile *sffile = SDL_ffmpegOpen(File->GetPath());
-	if (!sffile)
+	auto plm_context = plm_create_with_filename(File->GetPath());
+	if (!plm_context) return;
+
+	auto vframe = PlatformIsLittleEndian() ? 
+		SDL_CreateRGBSurface(SDL_SWSURFACE, plm_context->video_decoder->width, plm_context->video_decoder->height, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0) :
+		SDL_CreateRGBSurface(SDL_SWSURFACE, plm_context->video_decoder->width, plm_context->video_decoder->height, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0);
+
+	if (!vframe)
+	{
+		plm_destroy(plm_context);
 		return;
-		
-	SDL_ffmpegSelectVideoStream(sffile, 0);
-	SDL_ffmpegStream *vstream = SDL_ffmpegGetVideoStream(sffile, 0);
-		
-	SDL_ffmpegSelectAudioStream(sffile, 0);
-	SDL_ffmpegStream *astream = SDL_ffmpegGetAudioStream(sffile, 0);
-		
-	SDL_ffmpegVideoFrame *vframe = vstream ? SDL_ffmpegCreateVideoFrame() : NULL;
-		
-	if (vframe)
+	}
+
+	plm_set_video_decode_callback(plm_context, video_frame_decoder_callback, vframe);
+
+	bool audio_playback = OpenALManager::Get();
+
+	if (audio_playback)
 	{
-		vframe->surface = SDL_CreateRGBSurface(SDL_SWSURFACE, dst_rect.w, dst_rect.h, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0x00000000);
-		if (!vframe->surface)
+		if (plm_get_num_audio_streams(plm_context) == 0)
 		{
-			SDL_ffmpegFreeVideoFrame(vframe);
-			vframe = NULL;
+			plm_probe(plm_context, 5000 * 1024); //on some video formats like VCDs, number of audio streams is not present in header
+			audio_playback = plm_get_num_audio_streams(plm_context) > 0;
+		}
+
+		if (audio_playback)
+		{
+			movie_audio_mutex = SDL_CreateMutex();
+			plm_set_audio_lead_time(plm_context, (double)OpenALManager::Get()->GetSamplesFrameSize() / plm_get_samplerate(plm_context));
+			plm_set_audio_decode_callback(plm_context, audio_samples_decoder_callback, nullptr);
 		}
 	}
-		
-		
-	if (astream)
-	{
-		movie_audio_mutex = SDL_CreateMutex();
-		specs = SDL_ffmpegGetAudioSpec(sffile, 512, NULL);
-		int frameSize = specs.channels * specs.samples * 2;
-		for (int i = 0; i < AUDIO_BUF_SIZE; i++)
-		{
-			aframes[i] = SDL_ffmpegCreateAudioFrame(sffile, frameSize);
-			SDL_ffmpegGetAudioFrame(sffile, aframes[i]);
-		}
-	}
-				
+
+	plm_set_audio_enabled(plm_context, audio_playback);
+
 #ifdef HAVE_OPENGL
 	if (OGL_IsActive())
 		OGL_ClearScreen();
+
+	OGL_Blitter show_movie_blitter;
 #endif
-	OpenALManager::Get()->Start();
+
+	if (audio_playback) OpenALManager::Get()->Start();
+
 	bool done = false;
-	int64_t movie_waudio_sync = 0;
+	auto last_rendered_time = machine_tick_count();
 	std::shared_ptr<StreamPlayer> movie_audio_player;
+	const auto framerate = plm_get_framerate(plm_context);
+
 	while (!done)
 	{
 		SDL_Event event;
-		while (SDL_PollEvent(&event) )
+		while (SDL_PollEvent(&event))
 		{
 			switch (event.type) {
 			case SDL_KEYDOWN:
@@ -3599,87 +3601,51 @@ void show_movie(short index)
 				break;
 			}
 		}
+
+		auto current_time = machine_tick_count();
+		auto elapsed_time = current_time - last_rendered_time;
+		last_rendered_time = current_time;
+		plm_decode(plm_context, std::min(elapsed_time / 1000.0, 1.0 / framerate));
 			
-		if (astream)
+		if (audio_playback && (!movie_audio_player || !movie_audio_player->IsActive()))
 		{
-			SDL_LockMutex(movie_audio_mutex);
-			for (int i = 0; i < AUDIO_BUF_SIZE; i++)
-			{
-				if (!aframes[i]->size)
-				{
-					SDL_ffmpegGetAudioFrame(sffile, aframes[i]);
-				}
-			}
-			if (!aframes[AUDIO_BUF_SIZE - 1]->size && aframes[AUDIO_BUF_SIZE - 1]->last)
-				done = true;
-			SDL_UnlockMutex(movie_audio_mutex);
+			movie_audio_player = OpenALManager::Get()->PlayStream(audio_player_callback, plm_get_samplerate(plm_context), true, AudioFormat::_32_float);
 		}
-			
-		if (!movie_audio_player || !movie_audio_player->IsActive()) {
-			movie_audio_player = OpenALManager::Get()->PlayStream(movie_audio_callback, specs.channels * specs.samples * 2, specs.freq, specs.channels == 2, AudioFormat::_32_float);
-		}
-		if (vframe)
-		{
-			if (!astream) 
-			{
-				movie_sync = machine_tick_count() - movie_waudio_sync;
-			}
-			if (!vframe->ready)
-			{
-				SDL_ffmpegGetVideoFrame(sffile, vframe);
-			}
-			else if (vframe->pts <= movie_sync)
-			{
+
 #ifdef HAVE_OPENGL
-				if (OGL_IsActive())
-				{
-					OGL_Blitter::BoundScreen();
-					show_movie_blitter.Load(*(vframe->surface));
-					show_movie_blitter.Draw(dst_rect);
-					show_movie_blitter.Unload();
-					MainScreenSwap();
-				}
-				else
-#endif
-				{
-					SDL_BlitSurface(vframe->surface, 0, MainScreenSurface(), &dst_rect);
-					MainScreenUpdateRects(1, &dst_rect);
-				}
-				vframe->ready = 0;
-				if (vframe->last)
-					done = true;
-
-				movie_waudio_sync = machine_tick_count() - vframe->pts;
-			}
-			else 
-			{
-				sleep_for_machine_ticks(MIN(30, vframe->pts - movie_sync));
-			}
-		}
-	}
-
-	while (movie_audio_player->IsActive()) {
-		sleep_for_machine_ticks(MACHINE_TICKS_PER_SECOND / 100);
-	}
-
-	OpenALManager::Get()->Stop();
-	movie_audio_player.reset();
-
-	if (astream)
-	{
-		for (int i = 0; i < AUDIO_BUF_SIZE; i++)
+		if (OGL_IsActive())
 		{
-			SDL_ffmpegFreeAudioFrame(aframes[i]);
+			OGL_Blitter::BoundScreen();
+			show_movie_blitter.Load(*(vframe));
+			show_movie_blitter.Draw(dst_rect);
+			show_movie_blitter.Unload();
+			MainScreenSwap();
 		}
-		SDL_DestroyMutex(movie_audio_mutex);
-		movie_audio_mutex = NULL;
-	}
-				
-	if (vframe)
-		SDL_ffmpegFreeVideoFrame(vframe);
-	SDL_ffmpegFree(sffile);
+		else
+#endif
+		{
+			SDL_BlitSurface(vframe, 0, MainScreenSurface(), &dst_rect);
+			MainScreenUpdateRects(1, &dst_rect);
+		}
 
-#endif // HAVE_FFMPEG
+		if (plm_has_ended(plm_context))
+			done = true;
+	}
+
+	if (audio_playback)
+	{
+		while (movie_audio_player && movie_audio_player->IsActive()) {
+			sleep_for_machine_ticks(MACHINE_TICKS_PER_SECOND / 100);
+		}
+
+		OpenALManager::Get()->Stop();
+		movie_audio_player.reset();
+		audio_buffer.clear();
+		SDL_DestroyMutex(movie_audio_mutex);
+	}
+
+	SDL_FreeSurface(vframe);
+	plm_destroy(plm_context);
 }
 
 
