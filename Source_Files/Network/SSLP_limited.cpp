@@ -23,7 +23,6 @@
 
  *  This version does things the easy way, which should support current Aleph One needs, but which means
  *	there are several limitations.
- *  This version is built on top of SDL_net and my so-called "SDL_netx", broadcast extensions to SDL_net.
  *  This version is designed to receive processing time from the application's main thread by the
  *      main thread calling SSLP_Pump().  This way, there are no threading issues to worry about.  Of
  *      course, proper operation depends on receiving the processor from time to time while a lookup or

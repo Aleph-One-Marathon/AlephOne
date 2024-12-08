@@ -46,7 +46,6 @@
 
 #include "network_star.h"
 
-//#include "sdl_network.h"
 #include "TickBasedCircularQueue.h"
 #include "network_private.h"
 #include "mytm.h"
