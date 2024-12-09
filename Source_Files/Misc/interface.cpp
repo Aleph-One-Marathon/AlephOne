@@ -3565,7 +3565,7 @@ void show_movie(short index)
 		if (audio_playback)
 		{
 			movie_audio_mutex = SDL_CreateMutex();
-			plm_set_audio_lead_time(plm_context, (double)OpenALManager::Get()->GetSamplesFrameSize() / plm_get_samplerate(plm_context));
+			plm_set_audio_lead_time(plm_context, (double)OpenALManager::Get()->GetSamplesFrameSize() / OpenALManager::Get()->GetFrequency());
 			plm_set_audio_decode_callback(plm_context, audio_samples_decoder_callback, nullptr);
 		}
 	}
