@@ -115,6 +115,7 @@ Feb 13, 2003 (Woody Zenfell):
 #include <limits.h>
 #include <algorithm>
 #include <sstream>
+#include <libyuv/convert.h>
 
 #ifdef PERFORMANCE
 #include <perf.h>
@@ -3510,8 +3511,18 @@ static int audio_player_callback(uint8_t* data, int length)
 
 static void video_frame_decoder_callback(plm_t* mpeg, plm_frame_t* frame, void* data) 
 {
-	auto vframe = (SDL_Surface*)data;
-	plm_frame_to_rgba(frame, (uint8_t*)vframe->pixels, vframe->pitch);
+	const auto userdata = (std::tuple<SDL_Rect, SDL_Surface*, std::vector<uint8>*>*)data;
+	const auto& dimensions = std::get<SDL_Rect>(*userdata);
+	auto buffer = std::get<std::vector<uint8>*>(*userdata);
+	auto surface = std::get<SDL_Surface*>(*userdata);
+
+	libyuv::I420Scale(frame->y.data, frame->y.width, frame->cb.data, frame->cb.width, frame->cr.data, frame->cr.width, frame->width, frame->height,
+		buffer[0].data(), dimensions.w, buffer[1].data(), dimensions.w / 2, buffer[2].data(), dimensions.w / 2, dimensions.w, dimensions.h, libyuv::FilterMode::kFilterNone);
+
+	if (PlatformIsLittleEndian())
+		libyuv::I420ToABGR(buffer[0].data(), dimensions.w, buffer[1].data(), dimensions.w / 2, buffer[2].data(), dimensions.w / 2, (uint8_t*)surface->pixels, surface->pitch, dimensions.w, dimensions.h);
+	else
+		libyuv::I420ToRGBA(buffer[0].data(), dimensions.w, buffer[1].data(), dimensions.w / 2, buffer[2].data(), dimensions.w / 2, (uint8_t*)surface->pixels, surface->pitch, dimensions.w, dimensions.h);
 }
 
 void show_movie(short index)
@@ -3541,8 +3552,8 @@ void show_movie(short index)
 	if (!plm_context) return;
 
 	auto vframe = PlatformIsLittleEndian() ? 
-		SDL_CreateRGBSurface(SDL_SWSURFACE, plm_context->video_decoder->width, plm_context->video_decoder->height, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0) :
-		SDL_CreateRGBSurface(SDL_SWSURFACE, plm_context->video_decoder->width, plm_context->video_decoder->height, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0);
+		SDL_CreateRGBSurface(SDL_SWSURFACE, dst_rect.w, dst_rect.h, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0) :
+		SDL_CreateRGBSurface(SDL_SWSURFACE, dst_rect.w, dst_rect.h, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0);
 
 	if (!vframe)
 	{
@@ -3550,7 +3561,13 @@ void show_movie(short index)
 		return;
 	}
 
-	plm_set_video_decode_callback(plm_context, video_frame_decoder_callback, vframe);
+	std::vector<uint8> frame_buffers[3];
+	frame_buffers[0].resize(dst_rect.w * dst_rect.h);
+	frame_buffers[1].resize(dst_rect.w * dst_rect.h / 2);
+	frame_buffers[2].resize(dst_rect.w * dst_rect.h / 2);
+
+	auto callback_userdata = std::make_tuple(dst_rect, vframe, frame_buffers);
+	plm_set_video_decode_callback(plm_context, video_frame_decoder_callback, &callback_userdata);
 
 	bool audio_playback = OpenALManager::Get();
 
